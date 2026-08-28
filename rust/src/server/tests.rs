@@ -212,6 +212,40 @@ async fn the_asset_cookie_does_not_authorise_the_api() {
   assert_eq!(response.status(), 403);
 }
 
+#[test]
+fn a_comment_id_is_never_one_the_session_already_holds() {
+  use crate::model::{Anchor, AnchorKind};
+
+  // Reseeding replays the first draw, which is the collision the birthday
+  // bound makes real at a few hundred comments: two comments with one id leave
+  // PATCH and DELETE picking whichever they find first.
+  fastrand::seed(20_260_828);
+  let first = fresh_comment_id(&[]);
+  fastrand::seed(20_260_828);
+
+  let taken = vec![Comment {
+    id: first.clone(),
+    anchor: Anchor {
+      kind: AnchorKind::Overall,
+      file: None,
+      hunk: None,
+      side: None,
+      line: None,
+      chapter: None,
+    },
+    verdict: Verdict::Ok,
+    body: "held".into(),
+    created_at: "2026-01-01T00:00:00Z".into(),
+    updated_at: "2026-01-01T00:00:00Z".into(),
+    resolved: false,
+  }];
+  let second = fresh_comment_id(&taken);
+
+  assert_ne!(second, first);
+  assert_eq!(second.len(), 8, "{second}");
+  assert!(second.starts_with("c-"), "{second}");
+}
+
 #[tokio::test]
 async fn rejects_api_calls_without_the_token_header() {
   // Without this, any site the user visits could drive the review.

@@ -398,6 +398,18 @@ async fn get_state(State(state): State<Arc<AppState>>, headers: HeaderMap) -> Ap
   ok(to_value(&state.state()?)?)
 }
 
+/// `c-` and six hex digits, drawn until it is one the session does not already
+/// hold. Unchecked, the birthday bound bites at a few hundred comments, and a
+/// duplicate id makes PATCH and DELETE ambiguous about which one they mean.
+fn fresh_comment_id(taken: &[Comment]) -> String {
+  loop {
+    let id = format!("c-{:06x}", fastrand::u32(..) & 0x00ff_ffff);
+    if !taken.iter().any(|comment| comment.id == id) {
+      return id;
+    }
+  }
+}
+
 async fn create_comment(
   State(state): State<Arc<AppState>>,
   headers: HeaderMap,
@@ -405,19 +417,25 @@ async fn create_comment(
 ) -> ApiResult<Response> {
   state.guard_api(&headers, &Method::POST)?;
   let body = parse_body(&body)?;
+  let anchor = validate_anchor(body.get("anchor"))?;
+  let verdict = validate_verdict(body.get("verdict"))?;
+  let text = validate_body(body.get("body"))?;
   let stamp = now_iso();
-  let comment = Comment {
-    id: format!("c-{:02x}{:02x}{:02x}", fastrand::u8(..), fastrand::u8(..), fastrand::u8(..)),
-    anchor: validate_anchor(body.get("anchor"))?,
-    verdict: validate_verdict(body.get("verdict"))?,
-    body: validate_body(body.get("body"))?,
-    created_at: stamp.clone(),
-    updated_at: stamp,
-    resolved: false,
-  };
-  state.mutate(|current| {
+
+  // Built inside the mutation so the id is chosen against the comments the
+  // session actually has, under the same lock that writes it back.
+  let comment = state.mutate(|current| {
+    let comment = Comment {
+      id: fresh_comment_id(&current.comments),
+      anchor,
+      verdict,
+      body: text,
+      created_at: stamp.clone(),
+      updated_at: stamp,
+      resolved: false,
+    };
     current.comments.push(comment.clone());
-    Ok(())
+    Ok(comment)
   })?;
   Ok(json_response(StatusCode::CREATED, &to_value(&comment)?))
 }

@@ -196,7 +196,12 @@ pub fn router(state: Arc<AppState>) -> Router {
     .route("/comments/{id}", axum::routing::delete(delete_comment).patch(patch_comment))
     .route("/progress", put(put_progress))
     .route("/overall", put(put_overall))
-    .route("/submit", post(post_submit));
+    .route("/submit", post(post_submit))
+    // Both arms answer like the TypeScript did: it checked the token before
+    // routing, so an unknown path and a wrong method are the same 404 and
+    // neither tells an unauthenticated caller which endpoints exist.
+    .fallback(api_not_found)
+    .method_not_allowed_fallback(api_not_found);
 
   Router::new()
     .route("/", get(serve_page))
@@ -225,6 +230,17 @@ pub async fn bind(preferred: u16) -> Result<TcpListener> {
       }
       Err(error) => return Err(error).with_context(|| format!("bind 127.0.0.1:{port}")),
     }
+  }
+}
+
+async fn api_not_found(
+  State(state): State<Arc<AppState>>,
+  method: Method,
+  headers: HeaderMap,
+) -> Response {
+  match state.guard_api(&headers, &method) {
+    Ok(()) => ApiError::new("no such endpoint", 404).into_response(),
+    Err(error) => error.into_response(),
   }
 }
 

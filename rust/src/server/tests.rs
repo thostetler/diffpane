@@ -583,6 +583,32 @@ async fn returns_404_on_unknown_endpoints_and_static_paths() {
 }
 
 #[tokio::test]
+async fn answers_unknown_api_routes_without_leaking_them() {
+  let app = Harness::start(true).await;
+  // Unauthenticated: the same 403 as any other API call, so an unknown path
+  // cannot be told apart from a known one.
+  assert_eq!(app.get("/api/nope").await.status(), 403);
+  let wrong_method = app.client.post(app.url("/api/review")).send().await.expect("send");
+  assert_eq!(wrong_method.status(), 403);
+
+  // Authenticated: a 404 in the contract's error shape, hardened like the rest.
+  let known_path = app.api(Method::DELETE, "/api/progress", None).await;
+  assert_eq!(known_path.status(), 404);
+  assert_eq!(known_path.headers()["cache-control"], "no-store");
+  let payload: Value = known_path.json().await.expect("json");
+  assert_eq!(payload["error"], "no such endpoint");
+}
+
+#[tokio::test]
+async fn serves_assets_with_a_query_token() {
+  // The contract says query *or* cookie; the cookie path has its own test.
+  let app = Harness::start(true).await;
+  let response = app.get(&format!("/assets/app.js?t={}", app.token)).await;
+  assert_eq!(response.status(), 200);
+  assert!(response.headers()[CONTENT_TYPE].to_str().expect("type").contains("javascript"));
+}
+
+#[tokio::test]
 async fn hardens_the_response_headers() {
   let app = Harness::start(true).await;
   let response = app.api(Method::GET, "/api/state", None).await;

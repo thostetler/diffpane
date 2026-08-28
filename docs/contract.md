@@ -217,33 +217,47 @@ keeps the user's text, and says so plainly. It must not mirror the payload into
 
 Layout: sticky left sidebar (chapter nav + progress), scrolling main column.
 
-1. **Header** — title, story, scope line (`origin/main...HEAD`), totals,
-   overall progress `3/7 chapters reviewed`.
+1. **Header** — title, story, scope line (`origin/main → HEAD`), totals,
+   overall progress `3/7 reviewed`. A missing or unreadable `review.json` is a
+   warning notice under the metadata, never the `<h1>`: the title names the
+   thing being reviewed, not the state of the narrative file.
 2. **Chapters** — each is a section: title, intent, why, size badge, flags.
    Chapter-level comment button. Mark-reviewed toggle that hits `PUT /api/progress`.
 3. **Diff** — per file within a chapter: path header with status badge and
-   ± counts, file-level comment button, collapse toggle. Then hunks: monospace,
+   ± counts, file-level comment button, collapse toggle. The header sticks
+   under the page header while the file is on screen. Then hunks: monospace,
    two gutter columns (old / new line numbers), `add`/`del`/`context` colouring.
-   Syntax highlighting is *not* required; correct, readable, aligned diff is.
+   Row backgrounds stay low-saturation and the code keeps the normal
+   foreground; the gutter carries the stronger tint. Syntax highlighting is
+   *not* required; correct, readable, aligned diff is.
 4. **Folding** — collapsed by default, with a one-line summary and an expand
    control, when: `noise` is true; `status` is `added` or `deleted`; a hunk
    exceeds 40 lines (fold the middle, keep 8 lines of head/tail); the file
    exceeds 400 diff lines. Anything with a comment on it auto-expands.
-   A global "expand all / collapse all" control.
+   One global control that toggles between expand-all and collapse-all — its
+   label follows the last action taken, not derived state, because collapse-all
+   deliberately leaves commented files expanded.
 5. **Commenting** — hovering a diff line reveals a `+` in the gutter; clicking
    it (or clicking the line number) opens an inline composer under that line:
-   verdict radio (ok / fix / question), textarea, Save / Cancel. Saved comments
-   render inline under their anchor line, with edit / delete / resolve.
-   `Cmd/Ctrl+Enter` saves, `Esc` cancels.
-6. **Submit** — a footer bar: overall verdict + notes, count of open comments,
-   "Finish review" button → `POST /api/submit`, then a done state telling the
-   user to return to Claude. Confirm before submitting if any chapter is
-   unreviewed.
-7. **Keyboard** — `j`/`k` next/prev hunk, `n`/`p` next/prev chapter, `c` comment
+   verdict segmented radio group (ok / fix / question), textarea, Save / Cancel,
+   all on one row. Saved comments render inline under their anchor line, with
+   edit / delete / resolve. Composers and comments are indented to the code
+   column and connected to the line above with a coloured rule, so a comment
+   visibly belongs to its line. `Cmd/Ctrl+Enter` saves, `Esc` cancels.
+6. **Submit** — a footer bar: overall verdict as a segmented control
+   (Approve / Request changes / Question, wire values `ok`/`fix`/`question`),
+   notes, count of open comments, "Finish" button → `POST /api/submit`, then a
+   done state telling the user to return to Claude. Confirm before submitting
+   if any chapter is unreviewed.
+7. **Sidebar** — chapter navigation doubles as review state: reviewed,
+   has open feedback, or untouched, plus an open-comment count. The glyph is
+   decoration; the button's accessible name carries the state.
+8. **Keyboard** — `j`/`k` next/prev hunk, `n`/`p` next/prev chapter, `c` comment
    on focused line, `e` expand/collapse focused file, `?` shortcut help overlay.
-8. **Density** — terse by default. The descriptions are short on purpose; do not
+9. **Density** — terse by default. The descriptions are short on purpose; do not
    pad the layout with whitespace that makes the page long to scan. Dark theme,
-   monospace diff, system UI font for prose.
+   monospace diff, system UI font for prose. The diff is the dominant surface:
+   sidebar, header, file headers and footer are chrome and stay quiet.
 
 Accessibility: real `<button>`s, visible focus rings, comment composer focus
 trapped while open, `aria-expanded` on collapse toggles.
@@ -259,3 +273,6 @@ trapped while open, `aria-expanded` on collapse toggles.
   page on every save.
 - Focus is carried across `render()`. Anything focusable that survives a
   re-render needs a stable `id` or `data-fk`.
+- Segmented controls are real radio groups with the inputs visually hidden but
+  still focusable. The focus ring is drawn on the group. Never hide a focusable
+  control without moving its focus indicator somewhere visible.

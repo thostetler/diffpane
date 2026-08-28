@@ -35,6 +35,10 @@ const state = {
   // Held here rather than read off the DOM: a failed save re-renders, and the
   // footer must come back with what the user typed, not the last saved value.
   overall: { verdict: "ok", body: "" },
+  // Last global fold action, so one toggle can replace expand-all/collapse-all.
+  // Derived state would stick on "Collapse all" forever: collapse-all leaves
+  // commented files expanded on purpose.
+  foldIntent: "expanded",
   composer: null,
   offline: false,
   actionError: null,
@@ -94,7 +98,9 @@ async function fetchJson(path, options) {
 }
 
 function setData(payload) {
-  payload.review ||= { title: "Review unavailable", story: "review.json is missing.", chapters: [], file_notes: {} };
+  // A missing narrative is a notice, not a title: "Review unavailable" in the
+  // <h1> reads as the name of the thing being reviewed.
+  payload.review ||= { missing: true, chapters: [], file_notes: {} };
   payload.comments ||= { comments: [], progress: {}, overall: { verdict: "ok", body: "" }, submitted: false, submitted_at: null };
   payload.comments.comments ||= [];
   payload.comments.progress ||= {};
@@ -167,7 +173,17 @@ function render() {
     || (state.focusFallback && app.querySelector(state.focusFallback));
   state.focusFallback = null;
   target?.focus({ preventScroll: true });
+  syncTopOffset();
 }
+
+// File headers stick directly under the page header, and jump targets clear it.
+// The header's height depends on how the story wraps, so measure it.
+function syncTopOffset() {
+  const top = document.querySelector(".top");
+  if (top) document.documentElement.style.setProperty("--top-h", `${top.offsetHeight}px`);
+}
+
+addEventListener("resize", syncTopOffset);
 
 // Exactly one diff row is tabbable at a time; the rest are reached with j/k.
 // Otherwise a 400-line diff is 400 tab stops before the submit footer.
@@ -196,37 +212,74 @@ function renderSidebar() {
     // Rendered only when there is something to say: role="alert" announces on
     // insertion, so a permanently mounted banner would announce nothing.
     failure ? $("div", { class: "banner", role: "alert", text: failure }) : null,
-    $("nav", { class: "nav-list", "aria-label": "Chapters" },
-      state.chapters.map(chapter => $("button", {
-        type: "button",
-        class: "nav-item",
-        dataset: { chapter: chapter.id, fk: `nav:${chapter.id}` },
-        onClick: () => scrollToChapter(chapter.id)
-      }, [
-        $("span", { class: "nav-title", text: chapter.title }),
-        $("span", { class: "dot " + (chapterState(chapter.id) === "reviewed" ? "reviewed" : "") })
-      ]))
-    )
+    $("nav", { class: "nav-list", "aria-label": "Chapters" }, state.chapters.map(renderNavItem))
   ]);
+}
+
+// The sidebar carries review state, not just navigation: reviewed, has open
+// feedback, or untouched. The glyph is aria-hidden; the button's label says it.
+const NAV_MARK = { reviewed: "✓", feedback: "!", unreviewed: "○" };
+
+function renderNavItem(chapter) {
+  const reviewed = chapterState(chapter.id) === "reviewed";
+  const open = openCommentsIn(chapter);
+  const status = reviewed ? "reviewed" : open ? "feedback" : "unreviewed";
+  const label = `${chapter.title} — ${reviewed ? "reviewed" : "unreviewed"}`
+    + (open ? `, ${open} open ${open === 1 ? "comment" : "comments"}` : "");
+  return $("button", {
+    type: "button",
+    class: "nav-item",
+    "aria-label": label,
+    dataset: { chapter: chapter.id, fk: `nav:${chapter.id}` },
+    onClick: () => scrollToChapter(chapter.id)
+  }, [
+    $("span", { class: `nav-mark ${status}`, "aria-hidden": "true", text: NAV_MARK[status] }),
+    $("span", { class: "nav-title", text: chapter.title }),
+    open ? $("span", { class: "nav-count", "aria-hidden": "true", text: String(open) }) : null
+  ]);
+}
+
+// File-anchored comments have no chapter on them, so map them through the
+// chapter that renders the file.
+function openCommentsIn(chapter) {
+  const paths = new Set(chapter.files || []);
+  for (const id of chapter.hunks || []) {
+    const file = state.hunkFile.get(id);
+    if (file) paths.add(file.path);
+  }
+  return state.comments.filter(comment => {
+    if (comment.resolved) return false;
+    const anchor = comment.anchor || {};
+    if (anchor.kind === "file") return paths.has(anchor.file);
+    return anchor.chapter === chapter.id;
+  }).length;
 }
 
 function renderHeader() {
   const { meta, review } = state.data;
   const reviewed = state.chapters.filter(chapter => chapterState(chapter.id) === "reviewed").length;
   const total = state.chapters.length;
-  const range = meta?.base && meta?.head ? `${meta.base}...${meta.head}` : meta?.diff_cmd || "";
-  const totals = meta?.totals ? `${meta.totals.files} files  +${meta.totals.additions}/-${meta.totals.deletions}` : "no totals";
+  const range = meta?.base && meta?.head ? `${meta.base} → ${meta.head}` : meta?.diff_cmd || "";
+  const totals = meta?.totals ? `${meta.totals.files} files · +${meta.totals.additions} −${meta.totals.deletions}` : "no totals";
+  const expanded = state.foldIntent === "expanded";
   return $("header", { class: "top" }, [
     $("div", { class: "top-row" }, [
-      $("div", {}, [
-        $("h1", { text: review?.title || "Review" }),
-        $("p", { class: "story", text: review?.story || "No review narrative found." }),
-        $("p", { class: "meta-line", text: `${meta?.repo || "repo"} / ${meta?.scope || "scope"} / ${range} / ${totals}` })
-      ]),
+      $("div", { class: "top-main" }, [
+        $("h1", { text: review?.title || meta?.repo || "Review" }),
+        review?.story ? $("p", { class: "story", text: review.story }) : null,
+        $("p", { class: "meta-line", text: [meta?.scope, range, totals].filter(Boolean).join("   ") }),
+        review?.missing
+          ? $("p", { class: "notice", text: "⚠ Review metadata unavailable — review.json is missing" })
+          : null
+      ].filter(Boolean)),
       $("div", { class: "toolbar" }, [
-        $("span", { class: "badge", text: `${reviewed}/${total} chapters reviewed` }),
-        $("button", { type: "button", text: "expand all", dataset: { fk: "expand-all" }, onClick: () => setAllExpanded(true) }),
-        $("button", { type: "button", text: "collapse all", dataset: { fk: "collapse-all" }, onClick: () => setAllExpanded(false) })
+        $("span", { class: "badge", text: `${reviewed}/${total} reviewed` }),
+        $("button", {
+          type: "button",
+          text: expanded ? "Collapse all" : "Expand all",
+          dataset: { fk: "fold-all" },
+          onClick: () => setAllExpanded(!expanded)
+        })
       ])
     ])
   ]);
@@ -257,10 +310,12 @@ function renderChapter(chapter) {
       })
     ])
   ]));
-  section.append($("div", { class: "chapter-copy" }, [
-    $("p", {}, [$("strong", { text: "Intent " }), document.createTextNode(chapter.intent || "")]),
-    $("p", {}, [$("strong", { text: "Why " }), document.createTextNode(chapter.why || "")])
-  ]));
+  if (chapter.intent || chapter.why) {
+    section.append($("div", { class: "chapter-copy" }, [
+      chapter.intent ? $("p", {}, [$("strong", { text: "Intent " }), document.createTextNode(chapter.intent)]) : null,
+      chapter.why ? $("p", {}, [$("strong", { text: "Why " }), document.createTextNode(chapter.why)]) : null
+    ].filter(Boolean)));
+  }
   if (chapter.flags?.length) {
     section.append($("div", { class: "flags" }, chapter.flags.map(flag => $("span", { class: "badge warn", text: flag }))));
   }
@@ -295,6 +350,8 @@ function groupChapterHunks(chapter) {
   return groups;
 }
 
+const FILE_STATUS = { added: "A", modified: "M", deleted: "D", renamed: "R", copied: "C" };
+
 function renderFileGroup(chapter, group) {
   if (group.missing) return $("div", { class: "missing", text: `Unknown hunk referenced: ${group.missing}` });
   const { file, hunks } = group;
@@ -302,26 +359,32 @@ function renderFileGroup(chapter, group) {
   const lineCount = hunks.reduce((sum, hunk) => sum + (hunk.lines?.length || 0), 0);
   const article = $("article", { class: "file" + (file.noise ? " noise" : ""), dataset: { file: file.path } });
   article.append($("div", { class: "file-head" }, [
-    $("div", { class: "path", title: file.path, text: file.path }),
+    // The chevron and the path are one control: a header-wide click target
+    // would have to nest the comment button inside it.
+    $("button", {
+      type: "button",
+      class: "file-toggle",
+      title: file.path,
+      "aria-label": `${collapsed ? "Expand" : "Collapse"} ${file.path}`,
+      ariaExpanded: !collapsed,
+      dataset: { fk: `file-fold:${file.path}` },
+      onClick: () => toggleFile(file.path)
+    }, [
+      $("span", { class: "chev", "aria-hidden": "true", text: collapsed ? "▸" : "▾" }),
+      $("span", { class: "path", text: file.path })
+    ]),
     $("div", { class: "file-actions" }, [
-      $("span", { class: "badge", text: file.status }),
-      $("span", { class: "badge", text: `+${file.additions}/-${file.deletions}` }),
+      $("span", { class: "badge status", title: file.status, text: FILE_STATUS[file.status] || "?" }),
+      $("span", { class: "badge", text: `+${file.additions} −${file.deletions}` }),
       file.noise ? $("span", { class: "badge warn", text: "noise" }) : null,
       file.binary ? $("span", { class: "badge warn", text: "binary" }) : null,
       $("button", {
         type: "button",
-        text: "comment",
+        class: "icon",
+        text: "💬",
         "aria-label": `Comment on ${file.path}`,
         dataset: { fk: `file-comment:${file.path}` },
         onClick: () => openComposer({ kind: "file", file: file.path }, null)
-      }),
-      $("button", {
-        type: "button",
-        text: collapsed ? "expand" : "collapse",
-        "aria-label": `${collapsed ? "Expand" : "Collapse"} ${file.path}`,
-        ariaExpanded: !collapsed,
-        dataset: { fk: `file-fold:${file.path}` },
-        onClick: () => toggleFile(file.path)
       })
     ].filter(Boolean))
   ]));
@@ -417,11 +480,12 @@ function lineAnchor(file, hunk, line, chapter) {
 }
 
 function renderComment(comment) {
-  const box = $("div", { class: "comment-box" });
+  const box = $("div", { class: `comment-box ${comment.verdict}` });
   box.append($("div", { class: "comment-meta" }, [
     $("span", {}, [
-      $("span", { class: `verdict ${comment.verdict}`, text: comment.verdict }),
-      document.createTextNode(comment.resolved ? " / resolved" : " / open")
+      $("span", { class: `verdict ${comment.verdict}`, text: VERDICT_GLYPH[comment.verdict] || "" }),
+      document.createTextNode(` ${COMMENT_LABELS[comment.verdict] || comment.verdict}`),
+      document.createTextNode(comment.resolved ? " · resolved" : "")
     ]),
     $("span", { class: "comment-actions" }, [
       $("button", {
@@ -448,21 +512,43 @@ function renderComment(comment) {
   return box;
 }
 
+// Wire values stay ok/fix/question (contract); only the wording changes with
+// context — a line-level "fix" reads differently from a review outcome.
+const VERDICTS = ["ok", "fix", "question"];
+const VERDICT_GLYPH = { ok: "✓", fix: "↻", question: "?" };
+const COMMENT_LABELS = { ok: "OK", fix: "Fix", question: "Question" };
+const OUTCOME_LABELS = { ok: "Approve", fix: "Request changes", question: "Question" };
+
+// Segmented radios instead of a <select>: the three outcomes are the workflow,
+// and a native dropdown hides two thirds of it behind a click.
+function segmented({ name, label, value, key, labels = COMMENT_LABELS, onChange }) {
+  return $("div", { class: "segmented", role: "radiogroup", "aria-label": label },
+    VERDICTS.map(verdict => {
+      const input = $("input", { type: "radio", name, value: verdict, dataset: { fk: `${key}:${verdict}` } });
+      input.checked = verdict === value;
+      if (onChange) input.addEventListener("change", () => onChange(verdict));
+      return $("label", { class: `seg ${verdict}` }, [
+        input,
+        $("span", { class: "seg-glyph", "aria-hidden": "true", text: VERDICT_GLYPH[verdict] }),
+        $("span", { class: "seg-text", text: labels[verdict] })
+      ]);
+    })
+  );
+}
+
 function renderComposer(existing = state.composer?.comment) {
   const verdict = existing?.verdict || state.composer?.verdict || "fix";
   const body = existing?.body ?? state.composer?.body ?? "";
   const form = $("form", { class: "composer", onSubmit: event => { event.preventDefault(); saveComposer(form); } });
-  form.append($("div", { class: "radios" }, ["ok", "fix", "question"].map(value => {
-    const input = $("input", { type: "radio", name: "verdict", value });
-    input.checked = value === verdict;
-    return $("label", {}, [input, document.createTextNode(" " + value)]);
-  })));
-  const textarea = $("textarea", { name: "body", placeholder: "Comment" });
+  const textarea = $("textarea", { name: "body", rows: "2", placeholder: "Add feedback…" });
   textarea.value = body;
-  form.append(textarea);
-  form.append($("div", { class: "composer-actions" }, [
-    $("button", { type: "submit", text: "Save" }),
-    $("button", { type: "button", text: "Cancel", onClick: closeComposer })
+  form.append($("div", { class: "composer-row" }, [
+    segmented({ name: "verdict", label: "Comment type", value: verdict, key: "composer-verdict" }),
+    textarea,
+    $("div", { class: "composer-actions" }, [
+      $("button", { type: "submit", class: "primary", text: "Save" }),
+      $("button", { type: "button", text: "Cancel", onClick: closeComposer })
+    ])
   ]));
   if (state.composer?.error) form.append($("div", { class: "error", role: "alert", text: state.composer.error }));
   trapComposer(form);
@@ -647,38 +733,44 @@ function renderFooter() {
     ]);
   }
   const overall = state.overall;
-  const form = $("footer", { class: "footer" });
-  const verdictSelect = $("select", { name: "overall-verdict", "aria-label": "Overall verdict", dataset: { fk: "overall-verdict" } },
-    ["ok", "fix", "question"].map(value => {
-      const option = $("option", { value, text: value });
-      option.selected = value === overall.verdict;
-      return option;
-    })
-  );
+  const footer = $("footer", { class: "footer" });
+  const persist = guard(() => saveOverall(readOverall()));
+  const verdict = segmented({
+    name: "overall-verdict",
+    label: "Review outcome",
+    // A fresh review has a null verdict, but readOverall() submits "ok" — the
+    // control has to show what would actually be sent.
+    value: overall.verdict || "ok",
+    key: "overall-verdict",
+    labels: OUTCOME_LABELS,
+    onChange: value => {
+      state.overall.verdict = value;
+      persist();
+    }
+  });
   const notes = $("textarea", {
     class: "overall-notes",
     name: "overall-body",
-    placeholder: "Overall notes",
+    rows: "1",
+    placeholder: "Overall feedback…",
+    "aria-label": "Overall feedback",
     dataset: { fk: "overall-body" }
   });
   notes.value = overall.body || "";
   // Track the pending value on every keystroke so a failed save re-renders with
   // the user's text, and guard the autosave so a rejection is not swallowed.
   notes.addEventListener("input", () => { state.overall.body = notes.value; });
-  notes.addEventListener("change", guard(() => saveOverall(readOverall())));
-  verdictSelect.addEventListener("change", guard(() => {
-    state.overall.verdict = verdictSelect.value;
-    return saveOverall(readOverall());
-  }));
-  form.append($("div", { class: "overall" }, [
-    $("div", {}, [
-      verdictSelect,
-      $("div", { class: "subline", text: `${state.comments.filter(comment => !comment.resolved).length} open comments` })
-    ]),
+  notes.addEventListener("change", persist);
+  const open = state.comments.filter(comment => !comment.resolved).length;
+  footer.append($("div", { class: "overall" }, [
+    verdict,
     notes,
-    $("button", { type: "button", text: "Finish review", dataset: { fk: "submit" }, onClick: guard(submitReview) })
+    $("div", { class: "finish" }, [
+      $("span", { class: "subline", text: `${open} open` }),
+      $("button", { type: "button", class: "primary", text: "Finish →", dataset: { fk: "submit" }, onClick: guard(submitReview) })
+    ])
   ]));
-  return form;
+  return footer;
 }
 
 function readOverall() {
@@ -709,6 +801,7 @@ function toggleFile(path) {
 }
 
 function setAllExpanded(expanded) {
+  state.foldIntent = expanded ? "expanded" : "collapsed";
   state.collapsedFiles.clear();
   if (!expanded) {
     // Contract §4: anything with a comment on it stays expanded.

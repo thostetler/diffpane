@@ -9,10 +9,12 @@
   --faint: #586170;
   --line: #2a313c;
   --line-soft: #202733;
-  --add-bg: #10281e;
-  --add-text: #b7f0cd;
-  --del-bg: #31171b;
-  --del-text: #f0b7bf;
+  /* Translucent, not solid: a whole hunk of saturated green is unreadable at
+     length. The gutter carries the colour, the code keeps normal foreground. */
+  --add-bg: rgba(80, 214, 145, 0.09);
+  --add-gutter: rgba(80, 214, 145, 0.17);
+  --del-bg: rgba(255, 123, 138, 0.08);
+  --del-gutter: rgba(255, 123, 138, 0.16);
   --warn-bg: #2e2612;
   --warn-text: #f4d58d;
   --fix: #ff7b8a;
@@ -20,6 +22,9 @@
   --question: #86b7ff;
   --accent: #7aa2ff;
   --shadow: rgba(0, 0, 0, 0.35);
+  --sidebar-w: 236px;
+  /* Measured from the real header on every render; this is the boot value. */
+  --top-h: 88px;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
@@ -46,6 +51,23 @@ button {
 }
 
 button:hover { border-color: var(--accent); }
+
+button.primary {
+  border-color: #3c5a9e;
+  background: #21365e;
+  color: #dbe6ff;
+}
+
+button.icon {
+  padding: 2px 6px;
+  line-height: 1.1;
+  background: transparent;
+  border-color: transparent;
+  opacity: 0.7;
+}
+
+button.icon:hover { opacity: 1; }
+
 button:disabled { cursor: not-allowed; opacity: 0.55; }
 button:focus-visible, textarea:focus-visible, input:focus-visible, a:focus-visible {
   outline: 2px solid var(--accent);
@@ -54,7 +76,7 @@ button:focus-visible, textarea:focus-visible, input:focus-visible, a:focus-visib
 
 .app {
   display: grid;
-  grid-template-columns: 260px minmax(0, 1fr);
+  grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
   min-height: 100vh;
 }
 
@@ -101,13 +123,15 @@ button:focus-visible, textarea:focus-visible, input:focus-visible, a:focus-visib
 .nav-item {
   width: 100%;
   display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 8px;
+  grid-template-columns: 14px minmax(0, 1fr) auto;
+  gap: 7px;
+  align-items: center;
   text-align: left;
   background: transparent;
   border-color: transparent;
   color: var(--muted);
-  padding: 6px 7px;
+  padding: 5px 7px;
+  font-size: 13px;
 }
 
 .nav-item.active, .nav-item:hover {
@@ -123,19 +147,28 @@ button:focus-visible, textarea:focus-visible, input:focus-visible, a:focus-visib
   white-space: nowrap;
 }
 
-.dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  align-self: center;
-  background: var(--faint);
+.nav-mark {
+  text-align: center;
+  font-size: 11px;
+  color: var(--faint);
 }
 
-.dot.reviewed { background: var(--ok); }
+.nav-mark.reviewed { color: var(--ok); }
+.nav-mark.feedback { color: var(--warn-text); }
+
+.nav-count {
+  min-width: 16px;
+  text-align: center;
+  border-radius: 999px;
+  background: var(--panel-3);
+  color: var(--warn-text);
+  font-size: 11px;
+  padding: 0 5px;
+}
 
 .main {
   min-width: 0;
-  padding-bottom: 92px;
+  padding-bottom: 68px;
 }
 
 .top {
@@ -145,12 +178,12 @@ button:focus-visible, textarea:focus-visible, input:focus-visible, a:focus-visib
   /* Opaque: chapter headers scroll under this and bled through at 0.94. */
   background: rgb(13, 15, 18);
   border-bottom: 1px solid var(--line);
-  padding: 12px 18px 10px;
+  padding: 9px 16px 8px;
 }
 
 /* Keep sidebar jumps and n/p navigation clear of the sticky header. */
 .chapter, .file, .diff-row {
-  scroll-margin-top: 104px;
+  scroll-margin-top: calc(var(--top-h) + 12px);
 }
 
 .top-row, .section-head, .file-head, .footer-inner {
@@ -163,20 +196,36 @@ button:focus-visible, textarea:focus-visible, input:focus-visible, a:focus-visib
 h1, h2, h3, p { margin: 0; }
 
 h1 {
-  font-size: 19px;
+  font-size: 17px;
   line-height: 1.2;
 }
 
+.top-main { min-width: 0; }
+
 .story {
   color: var(--muted);
-  margin-top: 4px;
+  font-size: 13px;
+  margin-top: 3px;
   max-width: 980px;
 }
 
 .meta-line, .subline {
-  color: var(--muted);
-  font-size: 12px;
+  color: var(--faint);
+  font-size: 11px;
+  margin-top: 4px;
+}
+
+.meta-line {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  white-space: pre;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.notice {
   margin-top: 5px;
+  color: var(--warn-text);
+  font-size: 12px;
 }
 
 .toolbar {
@@ -187,7 +236,7 @@ h1 {
 }
 
 .chapter {
-  padding: 14px 18px 8px;
+  padding: 12px 16px 8px;
   border-bottom: 1px solid var(--line-soft);
 }
 
@@ -196,7 +245,7 @@ h1 {
 }
 
 .section-head h2 {
-  font-size: 16px;
+  font-size: 15px;
   line-height: 1.25;
 }
 
@@ -216,6 +265,12 @@ h1 {
   padding: 1px 7px;
   color: var(--muted);
   font-size: 12px;
+}
+
+.badge.status {
+  justify-content: center;
+  min-width: 22px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
 }
 
 .badge.warn {
@@ -254,21 +309,46 @@ h1 {
 }
 
 .file {
-  margin-top: 10px;
+  margin-top: 8px;
   border: 1px solid var(--line);
   background: var(--panel-2);
   border-radius: 7px;
-  overflow: hidden;
 }
 
 .file.noise {
   opacity: 0.72;
 }
 
+/* Sticks under the page header so the path stays visible down a long file.
+   .file must not clip its overflow or this stops sticking. */
 .file-head {
-  padding: 7px 9px;
+  position: sticky;
+  top: var(--top-h);
+  z-index: 3;
+  padding: 4px 8px;
   background: var(--panel);
   border-bottom: 1px solid var(--line);
+  border-radius: 6px 6px 0 0;
+}
+
+.file-toggle {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr);
+  gap: 4px;
+  align-items: center;
+  text-align: left;
+  background: transparent;
+  border-color: transparent;
+  padding: 2px 4px;
+}
+
+.file-toggle:hover { background: var(--panel-3); }
+
+.chev {
+  color: var(--muted);
+  font-size: 10px;
+  text-align: center;
 }
 
 .path {
@@ -339,10 +419,11 @@ h1 {
   outline-offset: -2px;
 }
 
-.diff-row.add { background: var(--add-bg); color: var(--add-text); }
-.diff-row.del { background: var(--del-bg); color: var(--del-text); }
-.diff-row.context { background: transparent; color: var(--text); }
-.diff-row:hover { filter: brightness(1.16); }
+.diff-row.add { background: var(--add-bg); }
+.diff-row.del { background: var(--del-bg); }
+.diff-row.context { background: transparent; }
+.diff-row { color: var(--text); }
+.diff-row:hover { filter: brightness(1.35); }
 
 .gutter {
   user-select: none;
@@ -353,12 +434,18 @@ h1 {
   border-right: 1px solid var(--line-soft);
 }
 
+.add .gutter { background: var(--add-gutter); }
+.del .gutter { background: var(--del-gutter); }
+
 .marker {
   user-select: none;
   text-align: center;
   padding: 1px 0;
-  opacity: 0.8;
+  font-weight: 700;
 }
+
+.add .marker { color: var(--ok); }
+.del .marker { color: var(--fix); }
 
 .add-comment {
   opacity: 0;
@@ -390,14 +477,35 @@ h1 {
   border-bottom: 1px solid var(--line-soft);
 }
 
+/* Left-aligned with the code column and connected to it, so a comment reads as
+   belonging to the line above rather than floating under the hunk. */
 .comment-box, .composer {
-  margin: 5px 10px 7px 128px;
+  --anchor: var(--accent);
+  position: relative;
+  margin: 4px 10px 5px 128px;
   border: 1px solid var(--line);
+  border-left: 2px solid var(--anchor);
   background: var(--panel);
-  border-radius: 6px;
-  padding: 8px;
+  border-radius: 0 6px 6px 0;
+  padding: 6px 8px;
   min-width: 520px;
 }
+
+.comment-box::before, .composer::before {
+  content: "";
+  position: absolute;
+  left: -14px;
+  top: -4px;
+  width: 14px;
+  height: 12px;
+  border-left: 2px solid var(--anchor);
+  border-bottom: 2px solid var(--anchor);
+  border-bottom-left-radius: 5px;
+}
+
+.comment-box.ok { --anchor: var(--ok); }
+.comment-box.fix { --anchor: var(--fix); }
+.comment-box.question { --anchor: var(--question); }
 
 .comment-meta {
   display: flex;
@@ -422,9 +530,9 @@ h1 {
   overflow-wrap: anywhere;
 }
 
-.comment-actions, .composer-actions, .radios {
+.comment-actions, .composer-actions {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
   flex-wrap: wrap;
 }
@@ -433,16 +541,69 @@ h1 {
   padding: 2px 6px;
 }
 
+/* One row: type, feedback, actions. The stacked version was ~150px of vertical
+   space per comment, which pushed the code it referred to off screen. */
+.composer-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: start;
+}
+
 .composer textarea, .overall-notes {
   width: 100%;
-  min-height: 72px;
+  min-height: 40px;
   resize: vertical;
   border: 1px solid var(--line);
   background: #090c10;
   color: var(--text);
   border-radius: 6px;
-  padding: 7px;
-  margin: 7px 0;
+  padding: 6px 7px;
+  margin: 0;
+}
+
+.segmented {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.seg {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 9px;
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+  border-left: 1px solid var(--line);
+}
+
+.seg:first-child { border-left: 0; }
+.seg:hover { background: var(--panel-3); color: var(--text); }
+
+/* Kept in the accessibility tree and the tab order — the radio group is still
+   the control, the segments are just its skin. */
+.seg input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.seg-glyph { font-weight: 700; }
+
+.seg:has(input:checked) { background: var(--panel-3); color: var(--text); }
+.seg.ok:has(input:checked) { color: var(--ok); }
+.seg.fix:has(input:checked) { color: var(--fix); }
+.seg.question:has(input:checked) { color: var(--question); }
+
+.segmented:has(input:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .error {
@@ -453,28 +614,36 @@ h1 {
 
 .footer {
   position: fixed;
-  left: 260px;
+  left: var(--sidebar-w);
   right: 0;
   bottom: 0;
   z-index: 6;
   border-top: 1px solid var(--line);
   background: rgba(15, 18, 23, 0.97);
   box-shadow: 0 -10px 24px var(--shadow);
-  padding: 10px 18px;
+  padding: 7px 16px;
 }
 
 .overall {
   display: grid;
-  grid-template-columns: 210px minmax(260px, 1fr) auto;
+  grid-template-columns: auto minmax(220px, 1fr) auto;
   gap: 10px;
   align-items: center;
   width: 100%;
 }
 
 .overall-notes {
-  min-height: 44px;
+  min-height: 34px;
   margin: 0;
 }
+
+.finish {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.finish .subline { margin: 0; white-space: nowrap; }
 
 .done {
   color: var(--ok);
@@ -532,8 +701,13 @@ h1 {
     border-bottom: 1px solid var(--line);
   }
   .chapter-copy { grid-template-columns: 1fr; }
+  .file-head { position: static; }
+  /* The footer stacks into three rows down here. */
+  .main { padding-bottom: 156px; }
   .footer { left: 0; }
   .overall { grid-template-columns: 1fr; }
+  .composer-row { grid-template-columns: 1fr; }
+  .composer-actions { justify-content: flex-end; }
   .comment-box, .composer { margin-left: 10px; min-width: 0; }
   .fold-row { padding-left: 10px; }
   .diff-row { grid-template-columns: 42px 42px 24px 12px minmax(360px, 1fr); }

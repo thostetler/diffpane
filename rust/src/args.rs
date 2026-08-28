@@ -184,7 +184,9 @@ pub fn parse(argv: Vec<String>) -> Result<Parsed> {
         selection.commit = true;
         options.commit = Some(parser.value("commit", inline)?);
       }
-      "--" => parser.rest = parser.args.by_ref().collect(),
+      // Extend, not replace: `diffpane a.ts -- b.ts` scopes to both, the way
+      // node's parseArgs collected positionals from either side.
+      "--" => parser.rest.extend(parser.args.by_ref()),
       other if other.starts_with('-') => bail!("unknown option: {other}"),
       other => parser.rest.push(other.to_owned()),
     }
@@ -267,6 +269,9 @@ mod tests {
     // `diffpane src/a.ts` and `diffpane -- src/a.ts` both scope to a path.
     assert_eq!(options(&["src/a.ts"]).paths, ["src/a.ts"]);
     assert_eq!(options(&["--", "src/a.ts", "ui/"]).paths, ["src/a.ts", "ui/"]);
+    // Both sides count. Dropping the left side reviewed a narrower diff than
+    // asked for, silently.
+    assert_eq!(options(&["src/a.ts", "--", "ui/"]).paths, ["src/a.ts", "ui/"]);
     // Past `--`, something that looks like a flag is a pathspec.
     assert_eq!(options(&["--", "--weird-file"]).paths, ["--weird-file"]);
   }

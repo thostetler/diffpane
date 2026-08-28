@@ -464,6 +464,42 @@ async fn accepts_progress_for_the_synthetic_unsorted_chapter() {
   assert_eq!(app.state().progress["unsorted"], ProgressState::Reviewed);
 }
 
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn concurrent_mutations_all_survive() {
+  // Twelve parallel creates on the real runtime once persisted eight: every
+  // handler read the state before the last one saved. The contract tells the UI
+  // a 2xx is durable, so a lost comment is a lie, not a race it can retry.
+  let app = Harness::start(true).await;
+  let mut posts = Vec::new();
+  for index in 0..12 {
+    let client = app.client.clone();
+    let url = app.url("/api/comments");
+    let token = app.token.clone();
+    posts.push(tokio::spawn(async move {
+      client
+        .post(url)
+        .header(TOKEN_HEADER, token)
+        .header(CONTENT_TYPE, "application/json")
+        .body(
+          json!({
+            "anchor": { "kind": "file", "file": "a.ts" },
+            "verdict": "fix",
+            "body": format!("comment {index}"),
+          })
+          .to_string(),
+        )
+        .send()
+        .await
+        .expect("send")
+        .status()
+    }));
+  }
+  for post in posts {
+    assert_eq!(post.await.expect("join"), 201);
+  }
+  assert_eq!(app.state().comments.len(), 12);
+}
+
 #[tokio::test]
 async fn stores_the_overall_verdict() {
   let app = Harness::start(true).await;

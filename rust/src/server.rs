@@ -48,6 +48,8 @@ pub struct AppState {
   /// Fires when a submit is routed. The receiver starts a graceful shutdown,
   /// which is what lets the response finish flushing (regression #7).
   submitted: mpsc::Sender<()>,
+  /// Held across every read-modify-write of the review state; see `mutate`.
+  writes: std::sync::Mutex<()>,
 }
 
 impl AppState {
@@ -57,7 +59,7 @@ impl AppState {
     ui_dir: PathBuf,
     submitted: mpsc::Sender<()>,
   ) -> Self {
-    Self { session, token, ui_dir, submitted }
+    Self { session, token, ui_dir, submitted, writes: std::sync::Mutex::new(()) }
   }
 
   /// The report is rendered from the same session the server has been writing.
@@ -328,8 +330,19 @@ impl AppState {
     self.session.state().map_err(internal)
   }
 
-  fn save(&self, state: &ReviewState) -> ApiResult<()> {
-    self.session.save_state(state).map_err(internal)
+  /// Read-modify-write on `comments.json`, serialised. Two requests that both
+  /// read before either saved silently dropped one of the changes, and the
+  /// contract promises the UI that a 2xx is durable. The TypeScript got this
+  /// for free from the event loop; a threaded runtime has to say it.
+  ///
+  /// The lock is a blocking one held across the file I/O. Nothing awaits inside
+  /// it, the files are small and local, and there is exactly one reviewer.
+  fn mutate<T>(&self, change: impl FnOnce(&mut ReviewState) -> ApiResult<T>) -> ApiResult<T> {
+    let _writing = self.writes.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+    let mut state = self.state()?;
+    let result = change(&mut state)?;
+    self.session.save_state(&state).map_err(internal)?;
+    Ok(result)
   }
 
   /// `unsorted` is the synthetic trailing chapter the UI appends; see contract.
@@ -394,9 +407,10 @@ async fn create_comment(
     updated_at: stamp,
     resolved: false,
   };
-  let mut current = state.state()?;
-  current.comments.push(comment.clone());
-  state.save(&current)?;
+  state.mutate(|current| {
+    current.comments.push(comment.clone());
+    Ok(())
+  })?;
   Ok(json_response(StatusCode::CREATED, &to_value(&comment)?))
 }
 
@@ -421,24 +435,24 @@ async fn patch_comment(
     None => None,
   };
 
-  let mut current = state.state()?;
-  let comment = current
-    .comments
-    .iter_mut()
-    .find(|comment| comment.id == id)
-    .ok_or_else(|| ApiError::new(format!("no such comment: {id}"), 404))?;
-  if let Some(verdict) = verdict {
-    comment.verdict = verdict;
-  }
-  if let Some(text) = text {
-    comment.body = text;
-  }
-  if let Some(resolved) = resolved {
-    comment.resolved = resolved;
-  }
-  comment.updated_at = now_iso();
-  let payload = to_value(&comment.clone())?;
-  state.save(&current)?;
+  let payload = state.mutate(|current| {
+    let comment = current
+      .comments
+      .iter_mut()
+      .find(|comment| comment.id == id)
+      .ok_or_else(|| ApiError::new(format!("no such comment: {id}"), 404))?;
+    if let Some(verdict) = verdict {
+      comment.verdict = verdict;
+    }
+    if let Some(text) = text {
+      comment.body = text;
+    }
+    if let Some(resolved) = resolved {
+      comment.resolved = resolved;
+    }
+    comment.updated_at = now_iso();
+    to_value(comment)
+  })?;
   ok(payload)
 }
 
@@ -448,13 +462,14 @@ async fn delete_comment(
   UrlPath(id): UrlPath<String>,
 ) -> ApiResult<Response> {
   state.guard_api(&headers, &Method::DELETE)?;
-  let mut current = state.state()?;
-  let before = current.comments.len();
-  current.comments.retain(|comment| comment.id != id);
-  if current.comments.len() == before {
-    return Err(ApiError::new(format!("no such comment: {id}"), 404));
-  }
-  state.save(&current)?;
+  state.mutate(|current| {
+    let before = current.comments.len();
+    current.comments.retain(|comment| comment.id != id);
+    if current.comments.len() == before {
+      return Err(ApiError::new(format!("no such comment: {id}"), 404));
+    }
+    Ok(())
+  })?;
   ok(json!({ "ok": true }))
 }
 
@@ -473,10 +488,10 @@ async fn put_progress(
     return Err(ApiError::bad_request(format!("no such chapter: {chapter}")));
   }
   let value = validate_progress_state(body.get("state"))?;
-  let mut current = state.state()?;
-  current.progress.insert(chapter, value);
-  let payload = json!({ "progress": to_value(&current.progress)? });
-  state.save(&current)?;
+  let payload = state.mutate(|current| {
+    current.progress.insert(chapter, value);
+    Ok(json!({ "progress": to_value(&current.progress)? }))
+  })?;
   ok(payload)
 }
 
@@ -496,10 +511,10 @@ async fn put_overall(
 ) -> ApiResult<Response> {
   state.guard_api(&headers, &Method::PUT)?;
   let overall = parse_overall(&parse_body(&body)?)?;
-  let mut current = state.state()?;
-  current.overall = overall;
-  let payload = json!({ "overall": to_value(&current.overall)? });
-  state.save(&current)?;
+  let payload = state.mutate(|current| {
+    current.overall = overall;
+    Ok(json!({ "overall": to_value(&current.overall)? }))
+  })?;
   ok(payload)
 }
 
@@ -510,14 +525,15 @@ async fn post_submit(
 ) -> ApiResult<Response> {
   state.guard_api(&headers, &Method::POST)?;
   let body = parse_body(&body)?;
-  let mut current = state.state()?;
-  if let Some(overall) = body.get("overall").filter(|value| value.is_object()) {
-    current.overall = parse_overall(overall)?;
-  }
-  current.submitted = true;
   let stamp = now_iso();
-  current.submitted_at = Some(stamp.clone());
-  state.save(&current)?;
+  state.mutate(|current| {
+    if let Some(overall) = body.get("overall").filter(|value| value.is_object()) {
+      current.overall = parse_overall(overall)?;
+    }
+    current.submitted = true;
+    current.submitted_at = Some(stamp.clone());
+    Ok(())
+  })?;
   // Signalling before the response is written is safe: the receiver's shutdown
   // is graceful, so this response still flushes (regression #7). A full channel
   // means a submit is already being handled, and one signal is enough.

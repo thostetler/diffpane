@@ -7,7 +7,10 @@
     <link rel="stylesheet" href="/assets/app.css">
   </head>
   <body>
-    <div id="app" class="app" aria-live="polite"></div>
+    <!-- No aria-live here: render() replaces the whole subtree, which would
+         re-announce the entire page on every save. The error banner and the
+         composer error carry role="alert" instead. -->
+    <div id="app" class="app"></div>
     <script type="module" src="/assets/app.js"></script>
   </body>
 </html>

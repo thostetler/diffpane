@@ -247,3 +247,15 @@ Layout: sticky left sidebar (chapter nav + progress), scrolling main column.
 
 Accessibility: real `<button>`s, visible focus rings, comment composer focus
 trapped while open, `aria-expanded` on collapse toggles.
+
+- The diff is a roving tabindex: exactly one row is a tab stop, and `j`/`k` move
+  it. A 400-line diff must not be 400 tab stops in front of the submit footer.
+- Line-number gutters are presentational (`aria-hidden`, not focusable). The
+  named `+` button is the control, so it carries the line's accessible name.
+- Add/del is never conveyed by colour alone: each row has a `+`/`-`/space marker
+  column and an `aria-label` naming the line type.
+- Errors are announced with `role="alert"` on insertion. `#app` must not carry
+  `aria-live` — `render()` replaces that whole subtree and would re-announce the
+  page on every save.
+- Focus is carried across `render()`. Anything focusable that survives a
+  re-render needs a stable `id` or `data-fk`.

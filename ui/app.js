@@ -32,9 +32,15 @@ const state = {
   focusedAnchor: null,
   focusedHunk: null,
   focusedChapter: null,
+  // Held here rather than read off the DOM: a failed save re-renders, and the
+  // footer must come back with what the user typed, not the last saved value.
+  overall: { verdict: "ok", body: "" },
   composer: null,
   offline: false,
   actionError: null,
+  // Where to put focus after a render destroys the element that had it.
+  focusFallback: null,
+  helpReturnFocus: null,
   busy: false
 };
 
@@ -95,6 +101,7 @@ function setData(payload) {
   payload.comments.overall ||= { verdict: "ok", body: "" };
   state.data = payload;
   state.comments = payload.comments.comments;
+  state.overall = { ...payload.comments.overall };
   indexData();
   seedFolds();
 }
@@ -130,8 +137,7 @@ function indexData() {
 }
 
 function seedFolds() {
-  if (state.collapsedFiles.size) return;
-  const commentedFiles = new Set(state.comments.map(comment => comment.anchor?.file).filter(Boolean));
+  const commentedFiles = commentedFilePaths();
   for (const file of state.data.hunks?.files || []) {
     const lineCount = (file.hunks || []).reduce((sum, hunk) => sum + (hunk.lines?.length || 0), 0);
     if (!commentedFiles.has(file.path) && (file.noise || file.status === "added" || file.status === "deleted" || lineCount > 400)) {
@@ -140,30 +146,61 @@ function seedFolds() {
   }
 }
 
+// render() replaces the whole tree, so focus has to be carried across by hand
+// or every save, resolve or fold drops the keyboard user back at <body>.
+function focusKeyOf(el) {
+  if (!el || el === document.body) return null;
+  if (el.id) return `#${CSS.escape(el.id)}`;
+  if (el.dataset?.fk) return `[data-fk="${CSS.escape(el.dataset.fk)}"]`;
+  return null;
+}
+
 function render() {
   const app = document.getElementById("app");
+  const restore = focusKeyOf(document.activeElement);
   const sidebar = renderSidebar();
   const main = $("main", { class: "main" }, [renderHeader(), ...state.chapters.map(renderChapter), renderFooter()]);
-  app.replaceChildren(sidebar, main, renderHelp());
+  app.replaceChildren(sidebar, main);
   markActiveNav();
+  ensureTabbableRow();
+  const target = (restore && app.querySelector(restore))
+    || (state.focusFallback && app.querySelector(state.focusFallback));
+  state.focusFallback = null;
+  target?.focus({ preventScroll: true });
+}
+
+// Exactly one diff row is tabbable at a time; the rest are reached with j/k.
+// Otherwise a 400-line diff is 400 tab stops before the submit footer.
+function ensureTabbableRow() {
+  const rows = document.querySelectorAll(".diff-row");
+  if (!rows.length || document.querySelector('.diff-row[tabindex="0"]')) return;
+  rows[0].setAttribute("tabindex", "0");
+  rows[0].querySelector(".add-comment")?.setAttribute("tabindex", "0");
 }
 
 function renderSidebar() {
+  const failure = state.actionError
+    || (state.offline ? "server unreachable - your last change was not saved" : null);
   return $("aside", { class: "sidebar" }, [
     $("div", { class: "brand" }, [
-      $("div", { class: "brand-title", text: "diffpane" }),
-      $("button", { type: "button", text: "?", title: "Shortcuts", onClick: showHelp })
+      $("img", { class: "brand-logo", src: "/assets/logo.png", alt: "diffpane" }),
+      $("button", {
+        type: "button",
+        text: "?",
+        title: "Shortcuts",
+        "aria-label": "Keyboard shortcuts",
+        dataset: { fk: "help" },
+        onClick: showHelp
+      })
     ]),
-    $("div", {
-      class: "banner" + (state.offline || state.actionError ? " show" : ""),
-      text: state.actionError
-        || "server unreachable - your last change was not saved"
-    }),
+    // Rendered only when there is something to say: role="alert" announces on
+    // insertion, so a permanently mounted banner would announce nothing.
+    failure ? $("div", { class: "banner", role: "alert", text: failure }) : null,
     $("nav", { class: "nav-list", "aria-label": "Chapters" },
       state.chapters.map(chapter => $("button", {
         type: "button",
         class: "nav-item",
-        dataset: { chapter: chapter.id },
+        dataset: { chapter: chapter.id, fk: `nav:${chapter.id}` },
         onClick: () => scrollToChapter(chapter.id)
       }, [
         $("span", { class: "nav-title", text: chapter.title }),
@@ -188,8 +225,8 @@ function renderHeader() {
       ]),
       $("div", { class: "toolbar" }, [
         $("span", { class: "badge", text: `${reviewed}/${total} chapters reviewed` }),
-        $("button", { type: "button", text: "expand all", onClick: () => setAllExpanded(true) }),
-        $("button", { type: "button", text: "collapse all", onClick: () => setAllExpanded(false) })
+        $("button", { type: "button", text: "expand all", dataset: { fk: "expand-all" }, onClick: () => setAllExpanded(true) }),
+        $("button", { type: "button", text: "collapse all", dataset: { fk: "collapse-all" }, onClick: () => setAllExpanded(false) })
       ])
     ])
   ]);
@@ -204,10 +241,18 @@ function renderChapter(chapter) {
   section.append($("div", { class: "section-head" }, [
     $("div", {}, [$("h2", { text: chapter.title }), badges]),
     $("div", { class: "chapter-actions" }, [
-      $("button", { type: "button", text: "comment", onClick: () => openComposer({ kind: "chapter", chapter: chapter.id }, null) }),
+      $("button", {
+        type: "button",
+        text: "comment",
+        "aria-label": `Comment on chapter ${chapter.title}`,
+        dataset: { fk: `chapter-comment:${chapter.id}` },
+        onClick: () => openComposer({ kind: "chapter", chapter: chapter.id }, null)
+      }),
       $("button", {
         type: "button",
         text: chapterState(chapter.id) === "reviewed" ? "reviewed" : "mark reviewed",
+        "aria-pressed": String(chapterState(chapter.id) === "reviewed"),
+        dataset: { fk: `chapter-review:${chapter.id}` },
         onClick: guard(() => toggleChapter(chapter.id))
       })
     ])
@@ -263,11 +308,19 @@ function renderFileGroup(chapter, group) {
       $("span", { class: "badge", text: `+${file.additions}/-${file.deletions}` }),
       file.noise ? $("span", { class: "badge warn", text: "noise" }) : null,
       file.binary ? $("span", { class: "badge warn", text: "binary" }) : null,
-      $("button", { type: "button", text: "comment", onClick: () => openComposer({ kind: "file", file: file.path }, null) }),
+      $("button", {
+        type: "button",
+        text: "comment",
+        "aria-label": `Comment on ${file.path}`,
+        dataset: { fk: `file-comment:${file.path}` },
+        onClick: () => openComposer({ kind: "file", file: file.path }, null)
+      }),
       $("button", {
         type: "button",
         text: collapsed ? "expand" : "collapse",
+        "aria-label": `${collapsed ? "Expand" : "Collapse"} ${file.path}`,
         ariaExpanded: !collapsed,
+        dataset: { fk: `file-fold:${file.path}` },
         onClick: () => toggleFile(file.path)
       })
     ].filter(Boolean))
@@ -304,7 +357,12 @@ function renderHunk(chapter, file, hunk) {
   for (let idx = 0; idx < visible.length; idx++) {
     if (shouldFold && idx === 8) {
       wrap.append($("div", { class: "fold-row" }, [
-        $("button", { type: "button", text: `${lines.length - 16} lines folded`, onClick: () => { state.expandedHunks.add(hunk.id); render(); scrollToHunk(hunk.id); } })
+        $("button", {
+          type: "button",
+          text: `${lines.length - 16} lines folded`,
+          dataset: { fk: `unfold:${hunk.id}` },
+          onClick: () => { state.expandedHunks.add(hunk.id); scrollToHunk(hunk.id); }
+        })
       ]));
     }
     appendLine(wrap, chapter, file, hunk, visible[idx]);
@@ -312,20 +370,40 @@ function renderHunk(chapter, file, hunk) {
   return wrap;
 }
 
+const LINE_KIND = { add: "added", del: "removed", context: "context" };
+const LINE_MARKER = { add: "+", del: "-", context: " " };
+
 function appendLine(parent, chapter, file, hunk, line) {
   const anchor = lineAnchor(file, hunk, line, chapter.id);
   const key = anchorKey(anchor);
+  const label = `${LINE_KIND[line.type] ?? line.type} line ${line.new ?? line.old ?? ""}`;
+  const tabbable = state.focusedLine === key;
+  const open = event => { event.stopPropagation(); openComposer(anchor, key); };
   const row = $("div", {
     class: `diff-row ${line.type}`,
     id: `line-${hunk.id}-${line.i}`,
-    tabindex: "0",
+    role: "group",
+    "aria-label": label,
+    tabindex: tabbable ? "0" : "-1",
     dataset: { lineKey: key, hunk: hunk.id, chapter: chapter.id, file: file.path },
     onFocus: () => setFocused(key, anchor, hunk.id, chapter.id),
     onClick: () => setFocused(key, anchor, hunk.id, chapter.id)
   }, [
-    $("button", { type: "button", class: "gutter", text: line.old ?? "", onClick: event => { event.stopPropagation(); openComposer(anchor, key); } }),
-    $("button", { type: "button", class: "gutter", text: line.new ?? "", onClick: event => { event.stopPropagation(); openComposer(anchor, key); } }),
-    $("button", { type: "button", class: "add-comment", text: "+", title: "Comment", onClick: event => { event.stopPropagation(); openComposer(anchor, key); } }),
+    // Line numbers are decoration: the labelled + button is the control, so the
+    // gutters stay out of both the tab order and the accessibility tree.
+    $("div", { class: "gutter", "aria-hidden": "true", text: line.old ?? "", onClick: open }),
+    $("div", { class: "gutter", "aria-hidden": "true", text: line.new ?? "", onClick: open }),
+    $("button", {
+      type: "button",
+      class: "add-comment",
+      text: "+",
+      "aria-label": `Comment on ${label}`,
+      tabindex: tabbable ? "0" : "-1",
+      dataset: { fk: `add-comment:${key}` },
+      onClick: open
+    }),
+    // Colour alone must not carry add/del.
+    $("span", { class: "marker", "aria-hidden": "true", text: LINE_MARKER[line.type] ?? " " }),
     $("div", { class: "code", text: line.text ?? "" })
   ]);
   parent.append(row);
@@ -346,9 +424,24 @@ function renderComment(comment) {
       document.createTextNode(comment.resolved ? " / resolved" : " / open")
     ]),
     $("span", { class: "comment-actions" }, [
-      $("button", { type: "button", text: "edit", onClick: () => openComposer(comment.anchor, anchorKey(comment.anchor), comment) }),
-      $("button", { type: "button", text: comment.resolved ? "reopen" : "resolve", onClick: guard(() => patchComment(comment.id, { resolved: !comment.resolved })) }),
-      $("button", { type: "button", text: "delete", onClick: guard(() => deleteComment(comment.id)) })
+      $("button", {
+        type: "button",
+        text: "edit",
+        dataset: { fk: `comment-edit:${comment.id}` },
+        onClick: () => openComposer(comment.anchor, anchorKey(comment.anchor), comment)
+      }),
+      $("button", {
+        type: "button",
+        text: comment.resolved ? "reopen" : "resolve",
+        dataset: { fk: `comment-resolve:${comment.id}` },
+        onClick: guard(() => patchComment(comment.id, { resolved: !comment.resolved }))
+      }),
+      $("button", {
+        type: "button",
+        text: "delete",
+        dataset: { fk: `comment-delete:${comment.id}` },
+        onClick: guard(() => deleteComment(comment.id))
+      })
     ])
   ]));
   box.append($("div", { class: "comment-body", text: comment.body || "" }));
@@ -371,8 +464,8 @@ function renderComposer(existing = state.composer?.comment) {
     $("button", { type: "submit", text: "Save" }),
     $("button", { type: "button", text: "Cancel", onClick: closeComposer })
   ]));
-  if (state.composer?.error) form.append($("div", { class: "error", text: state.composer.error }));
-  setTimeout(() => trapComposer(form), 0);
+  if (state.composer?.error) form.append($("div", { class: "error", role: "alert", text: state.composer.error }));
+  trapComposer(form);
   return form;
 }
 
@@ -382,12 +475,20 @@ function appendAnchorComments(parent, anchor) {
 }
 
 function openComposer(anchor, key, comment) {
-  state.composer = { anchor, key: key || anchorKey(anchor), comment, verdict: comment?.verdict || "fix", body: comment?.body || "" };
+  state.composer = {
+    anchor,
+    key: key || anchorKey(anchor),
+    comment,
+    verdict: comment?.verdict || "fix",
+    body: comment?.body || "",
+    returnFocus: focusKeyOf(document.activeElement)
+  };
   render();
   document.querySelector(".composer textarea")?.focus();
 }
 
 function closeComposer() {
+  state.focusFallback = state.composer?.returnFocus ?? null;
   state.composer = null;
   render();
 }
@@ -401,6 +502,7 @@ async function saveComposer(form) {
   try {
     if (comment) await patchComment(comment.id, { verdict, body }, false);
     else await createComment({ anchor: state.composer.anchor, verdict, body });
+    state.focusFallback = state.composer.returnFocus;
     state.composer = null;
     render();
   } catch (error) {
@@ -409,8 +511,17 @@ async function saveComposer(form) {
   }
 }
 
+// A radio group is a single tab stop: only the checked radio is reachable with
+// Tab, so the trap's "first" element is not necessarily the first input.
+function composerTabbables(form) {
+  return [...form.querySelectorAll("button, textarea, input")].filter(el => {
+    if (el.type !== "radio") return true;
+    const group = [...form.elements[el.name]];
+    return el === (group.find(radio => radio.checked) ?? group[0]);
+  });
+}
+
 function trapComposer(form) {
-  const focusables = [...form.querySelectorAll("button, textarea, input")];
   form.addEventListener("keydown", event => {
     if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
       event.preventDefault();
@@ -418,7 +529,9 @@ function trapComposer(form) {
     } else if (event.key === "Escape") {
       event.preventDefault();
       closeComposer();
-    } else if (event.key === "Tab" && focusables.length) {
+    } else if (event.key === "Tab") {
+      const focusables = composerTabbables(form);
+      if (!focusables.length) return;
       const first = focusables[0];
       const last = focusables[focusables.length - 1];
       if (event.shiftKey && document.activeElement === first) {
@@ -454,10 +567,21 @@ async function patchComment(id, patch, rerender = true) {
 }
 
 async function deleteComment(id) {
+  const doomed = state.comments.find(comment => comment.id === id);
   await mutate(`/api/comments/${encodeURIComponent(id)}`, { method: "DELETE" }, () => ({ ok: true }));
   state.comments = state.comments.filter(comment => comment.id !== id);
   state.data.comments.comments = state.comments;
+  // The focused delete button leaves with its comment; land on the anchor.
+  state.focusFallback = anchorSelector(doomed?.anchor);
   render();
+}
+
+function anchorSelector(anchor) {
+  if (!anchor) return null;
+  if (anchor.kind === "line") return `[data-line-key="${CSS.escape(anchorKey(anchor))}"]`;
+  if (anchor.kind === "file") return `[data-fk="${CSS.escape(`file-comment:${anchor.file}`)}"]`;
+  if (anchor.kind === "chapter") return `[data-fk="${CSS.escape(`chapter-comment:${anchor.chapter}`)}"]`;
+  return null;
 }
 
 async function toggleChapter(chapter) {
@@ -470,6 +594,7 @@ async function toggleChapter(chapter) {
 async function saveOverall(overall) {
   const result = await mutate("/api/overall", { method: "PUT", body: JSON.stringify(overall) }, () => ({ overall }));
   state.data.comments.overall = result.overall;
+  state.overall = { ...result.overall };
 }
 
 async function submitReview() {
@@ -521,35 +646,43 @@ function renderFooter() {
       ])
     ]);
   }
-  const overall = comments.overall || { verdict: "ok", body: "" };
+  const overall = state.overall;
   const form = $("footer", { class: "footer" });
-  const verdictSelect = $("select", { name: "overall-verdict", "aria-label": "Overall verdict" },
+  const verdictSelect = $("select", { name: "overall-verdict", "aria-label": "Overall verdict", dataset: { fk: "overall-verdict" } },
     ["ok", "fix", "question"].map(value => {
       const option = $("option", { value, text: value });
       option.selected = value === overall.verdict;
       return option;
     })
   );
-  const notes = $("textarea", { class: "overall-notes", name: "overall-body", placeholder: "Overall notes" });
+  const notes = $("textarea", {
+    class: "overall-notes",
+    name: "overall-body",
+    placeholder: "Overall notes",
+    dataset: { fk: "overall-body" }
+  });
   notes.value = overall.body || "";
-  notes.addEventListener("change", () => saveOverall(readOverall()));
-  verdictSelect.addEventListener("change", () => saveOverall(readOverall()));
+  // Track the pending value on every keystroke so a failed save re-renders with
+  // the user's text, and guard the autosave so a rejection is not swallowed.
+  notes.addEventListener("input", () => { state.overall.body = notes.value; });
+  notes.addEventListener("change", guard(() => saveOverall(readOverall())));
+  verdictSelect.addEventListener("change", guard(() => {
+    state.overall.verdict = verdictSelect.value;
+    return saveOverall(readOverall());
+  }));
   form.append($("div", { class: "overall" }, [
     $("div", {}, [
       verdictSelect,
       $("div", { class: "subline", text: `${state.comments.filter(comment => !comment.resolved).length} open comments` })
     ]),
     notes,
-    $("button", { type: "button", text: "Finish review", onClick: guard(submitReview) })
+    $("button", { type: "button", text: "Finish review", dataset: { fk: "submit" }, onClick: guard(submitReview) })
   ]));
   return form;
 }
 
 function readOverall() {
-  return {
-    verdict: document.querySelector("[name='overall-verdict']")?.value || state.data.comments.overall?.verdict || "ok",
-    body: document.querySelector("[name='overall-body']")?.value || ""
-  };
+  return { verdict: state.overall.verdict || "ok", body: state.overall.body || "" };
 }
 
 function commentsForAnchor(anchor) {
@@ -578,7 +711,11 @@ function toggleFile(path) {
 function setAllExpanded(expanded) {
   state.collapsedFiles.clear();
   if (!expanded) {
-    for (const file of state.data.hunks?.files || []) state.collapsedFiles.add(file.path);
+    // Contract §4: anything with a comment on it stays expanded.
+    const commented = commentedFilePaths();
+    for (const file of state.data.hunks?.files || []) {
+      if (!commented.has(file.path)) state.collapsedFiles.add(file.path);
+    }
   }
   if (expanded) {
     for (const id of state.hunksById.keys()) state.expandedHunks.add(id);
@@ -588,12 +725,26 @@ function setAllExpanded(expanded) {
   render();
 }
 
+function commentedFilePaths() {
+  return new Set(state.comments.map(comment => comment.anchor?.file).filter(Boolean));
+}
+
 function setFocused(key, anchor, hunk, chapter) {
   state.focusedLine = key;
   state.focusedAnchor = anchor;
   state.focusedHunk = hunk;
   state.focusedChapter = chapter;
+  moveRovingTabstop(key);
   markActiveNav();
+}
+
+function moveRovingTabstop(key) {
+  for (const row of document.querySelectorAll(".diff-row")) {
+    const tabbable = row.dataset.lineKey === key;
+    if (!tabbable && row.getAttribute("tabindex") === "-1") continue;
+    row.setAttribute("tabindex", tabbable ? "0" : "-1");
+    row.querySelector(".add-comment")?.setAttribute("tabindex", tabbable ? "0" : "-1");
+  }
 }
 
 function scrollToChapter(id) {
@@ -617,9 +768,19 @@ function markActiveNav() {
   });
 }
 
-function renderHelp() {
-  const overlay = $("div", { class: "overlay", id: "help-overlay", onClick: event => { if (event.target.id === "help-overlay") hideHelp(); } });
-  overlay.append($("div", { class: "help", role: "dialog", "aria-modal": "true", "aria-label": "Keyboard shortcuts" }, [
+let helpOverlay = null;
+
+// The overlay lives outside #app: render() replaces that subtree, and a rebuilt
+// overlay silently closed itself on every state change.
+function ensureHelp() {
+  if (helpOverlay) return helpOverlay;
+  const dialog = $("div", {
+    class: "help",
+    role: "dialog",
+    "aria-modal": "true",
+    "aria-label": "Keyboard shortcuts",
+    tabindex: "-1"
+  }, [
     $("h2", { text: "Shortcuts" }),
     $("dl", {}, [
       $("dt", { text: "j / k" }), $("dd", { text: "next / previous hunk" }),
@@ -629,27 +790,68 @@ function renderHelp() {
       $("dt", { text: "?" }), $("dd", { text: "toggle help" }),
       $("dt", { text: "Esc" }), $("dd", { text: "close" })
     ]),
-    $("p", { class: "subline", text: "Cmd/Ctrl+Enter saves a comment." })
-  ]));
-  return overlay;
+    $("p", { class: "subline", text: "Cmd/Ctrl+Enter saves a comment." }),
+    $("div", { class: "help-actions" }, [
+      $("button", { type: "button", text: "Close", onClick: hideHelp })
+    ])
+  ]);
+  helpOverlay = $("div", { class: "overlay", id: "help-overlay" }, [dialog]);
+  helpOverlay.addEventListener("click", event => {
+    if (event.target === helpOverlay) hideHelp();
+  });
+  helpOverlay.addEventListener("keydown", event => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      hideHelp();
+      return;
+    }
+    if (event.key !== "Tab") return;
+    event.preventDefault();
+    const focusables = [...dialog.querySelectorAll("button")];
+    if (!focusables.length) {
+      dialog.focus();
+      return;
+    }
+    const at = focusables.indexOf(document.activeElement);
+    const step = event.shiftKey ? -1 : 1;
+    const next = at === -1
+      ? (event.shiftKey ? focusables.length - 1 : 0)
+      : (at + step + focusables.length) % focusables.length;
+    focusables[next].focus();
+  });
+  document.body.append(helpOverlay);
+  return helpOverlay;
+}
+
+function isHelpOpen() {
+  return helpOverlay?.classList.contains("show") === true;
 }
 
 function showHelp() {
-  document.getElementById("help-overlay")?.classList.add("show");
+  const overlay = ensureHelp();
+  state.helpReturnFocus = focusKeyOf(document.activeElement);
+  overlay.classList.add("show");
+  overlay.querySelector(".help").focus();
 }
 
 function hideHelp() {
-  document.getElementById("help-overlay")?.classList.remove("show");
+  if (!isHelpOpen()) return;
+  helpOverlay.classList.remove("show");
+  const target = state.helpReturnFocus && document.querySelector(state.helpReturnFocus);
+  state.helpReturnFocus = null;
+  target?.focus({ preventScroll: true });
 }
 
 document.addEventListener("keydown", event => {
   if (event.target.closest?.(".composer, textarea, input, select")) return;
   if (event.key === "?") {
     event.preventDefault();
-    const overlay = document.getElementById("help-overlay");
-    overlay?.classList.toggle("show");
+    if (isHelpOpen()) hideHelp();
+    else showHelp();
   } else if (event.key === "Escape") {
     hideHelp();
+  } else if (isHelpOpen()) {
+    return;
   } else if (event.key === "j" || event.key === "k") {
     event.preventDefault();
     moveHunk(event.key === "j" ? 1 : -1);

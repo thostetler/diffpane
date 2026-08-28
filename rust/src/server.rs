@@ -80,6 +80,14 @@ impl AppState {
   pub fn cookie_name(&self) -> String {
     format!("{COOKIE_PREFIX}_{}", self.port)
   }
+
+  /// Blocks until no mutation is in flight, and keeps it that way while the
+  /// guard lives. The CLI holds this over the final read of `comments.json`:
+  /// a request that outlives the shutdown grace is still writing, and the
+  /// contract promises that anything answered 2xx reaches the report.
+  pub fn freeze(&self) -> std::sync::MutexGuard<'_, ()> {
+    self.writes.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
+  }
 }
 
 /// 16 bytes from the OS. This token is the whole of the access control —
@@ -365,7 +373,7 @@ impl AppState {
   /// The lock is a blocking one held across the file I/O. Nothing awaits inside
   /// it, the files are small and local, and there is exactly one reviewer.
   fn mutate<T>(&self, change: impl FnOnce(&mut ReviewState) -> ApiResult<T>) -> ApiResult<T> {
-    let _writing = self.writes.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _writing = self.freeze();
     let mut state = self.state()?;
     let result = change(&mut state)?;
     self.session.save_state(&state).map_err(internal)?;

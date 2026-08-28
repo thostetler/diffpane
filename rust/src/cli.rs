@@ -208,7 +208,11 @@ pub async fn run(options: &Options) -> Result<i32> {
   eprintln!("diffpane  {files} files, +{additions}/-{deletions}");
   host_review(Arc::clone(&state), &mut submit_rx, options, &token, listener).await?;
 
+  // A connection that outlived the shutdown grace is still writing
+  // `comments.json`; the report waits for it rather than reading underneath it.
+  let frozen = state.freeze();
   let report = render_report(state.session(), options)?;
+  drop(frozen);
   print_report(&report.body);
   Ok(report.outcome.exit_code())
 }

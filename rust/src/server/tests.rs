@@ -76,9 +76,9 @@ impl Harness {
 
     let token = generate_token();
     let (submit_tx, submit_rx) = mpsc::channel(1);
-    let state = Arc::new(AppState::new(session, token.clone(), assets(), submit_tx));
     let listener = bind(0).await.expect("bind");
     let port = listener.local_addr().expect("addr").port();
+    let state = Arc::new(AppState::new(session, token.clone(), assets(), submit_tx, port));
 
     let (shutdown_tx, shutdown_rx) = oneshot::channel();
     let served = Arc::clone(&state);
@@ -183,14 +183,15 @@ async fn the_page_hands_out_a_cookie_for_its_own_assets() {
   let app = Harness::start(true).await;
   let page = app.get(&format!("/?t={}", app.token)).await;
   let cookie = page.headers()[reqwest::header::SET_COOKIE].to_str().expect("cookie").to_string();
-  assert!(cookie.contains("diffpane_token="), "{cookie}");
+  let name = app.state.cookie_name();
+  assert!(cookie.contains(&format!("{name}=")), "{cookie}");
   assert!(cookie.contains("SameSite=Strict"), "{cookie}");
 
   assert_eq!(app.get("/assets/app.css").await.status(), 403);
   let with_cookie = app
     .client
     .get(app.url("/assets/app.css"))
-    .header(COOKIE, format!("diffpane_token={}", app.token))
+    .header(COOKIE, format!("{name}={}", app.token))
     .send()
     .await
     .expect("send");
@@ -205,11 +206,23 @@ async fn the_asset_cookie_does_not_authorise_the_api() {
   let response = app
     .client
     .get(app.url("/api/review"))
-    .header(COOKIE, format!("diffpane_token={}", app.token))
+    .header(COOKIE, format!("{}={}", app.state.cookie_name(), app.token))
     .send()
     .await
     .expect("send");
   assert_eq!(response.status(), 403);
+}
+
+#[tokio::test]
+async fn the_cookie_is_named_for_the_port() {
+  // Cookies ignore ports, so a shared name let a second instance overwrite the
+  // first's cookie and reload its tab into 403s on app.css and app.js.
+  let app = Harness::start(true).await;
+  let port = app.base.rsplit(':').next().expect("port");
+  assert_eq!(app.state.cookie_name(), format!("diffpane_token_{port}"));
+
+  let other = Harness::start(true).await;
+  assert_ne!(app.state.cookie_name(), other.state.cookie_name());
 }
 
 #[test]
@@ -586,9 +599,9 @@ async fn the_submit_response_survives_the_shutdown_it_triggers() {
 
   let token = generate_token();
   let (submit_tx, mut submit_rx) = mpsc::channel(1);
-  let state = Arc::new(AppState::new(session, token.clone(), assets(), submit_tx));
   let listener = bind(0).await.expect("bind");
   let port = listener.local_addr().expect("addr").port();
+  let state = Arc::new(AppState::new(session, token.clone(), assets(), submit_tx, port));
   let served = tokio::spawn(serve(listener, state, async move {
     let _ = submit_rx.recv().await;
   }));

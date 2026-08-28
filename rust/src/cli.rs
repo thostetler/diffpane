@@ -155,8 +155,8 @@ async fn host_review(
   submitted: &mut mpsc::Receiver<()>,
   options: &Options,
   token: &str,
+  listener: tokio::net::TcpListener,
 ) -> Result<Ending> {
-  let listener = bind(options.port).await?;
   let port = listener.local_addr()?.port();
   let url = format!("http://127.0.0.1:{port}/?t={token}");
 
@@ -198,11 +198,15 @@ pub async fn run(options: &Options) -> Result<i32> {
 
   let token = generate_token();
   let (submit_tx, mut submit_rx) = mpsc::channel(1);
-  let state = Arc::new(AppState::new(built.session, token.clone(), Assets::from_env(), submit_tx));
+  // Bound before the state is built: the port names the asset cookie.
+  let listener = bind(options.port).await?;
+  let port = listener.local_addr()?.port();
+  let state =
+    Arc::new(AppState::new(built.session, token.clone(), Assets::from_env(), submit_tx, port));
 
   let Totals { files, additions, deletions } = built.meta.totals;
   eprintln!("diffpane  {files} files, +{additions}/-{deletions}");
-  host_review(Arc::clone(&state), &mut submit_rx, options, &token).await?;
+  host_review(Arc::clone(&state), &mut submit_rx, options, &token, listener).await?;
 
   let report = render_report(state.session(), options)?;
   print_report(&report.body);

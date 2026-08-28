@@ -39,7 +39,7 @@ use crate::validate::{
 };
 
 const MAX_BODY_BYTES: usize = 1024 * 1024;
-const COOKIE_NAME: &str = "diffpane_token";
+const COOKIE_PREFIX: &str = "diffpane_token";
 const PORT_ATTEMPTS: u16 = 20;
 
 pub struct AppState {
@@ -51,16 +51,34 @@ pub struct AppState {
   submitted: mpsc::Sender<()>,
   /// Held across every read-modify-write of the review state; see `mutate`.
   writes: std::sync::Mutex<()>,
+  /// The port the listener is already bound to. It names the cookie, so it has
+  /// to be known before the first request, not filled in once serving starts.
+  port: u16,
 }
 
 impl AppState {
-  pub fn new(session: Session, token: String, assets: Assets, submitted: mpsc::Sender<()>) -> Self {
-    Self { session, token, assets, submitted, writes: std::sync::Mutex::new(()) }
+  pub fn new(
+    session: Session,
+    token: String,
+    assets: Assets,
+    submitted: mpsc::Sender<()>,
+    port: u16,
+  ) -> Self {
+    Self { session, token, assets, submitted, writes: std::sync::Mutex::new(()), port }
   }
 
   /// The report is rendered from the same session the server has been writing.
   pub fn session(&self) -> &Session {
     &self.session
+  }
+
+  /// Cookies are scoped to a host and ignore the port, so two instances on
+  /// 127.0.0.1 would share one cookie: the second page load overwrote the
+  /// first's, and since `index.html` fetches its assets without a `?t=`, the
+  /// older tab reloaded into 403s and a blank page. The port in the name keeps
+  /// them apart.
+  pub fn cookie_name(&self) -> String {
+    format!("{COOKIE_PREFIX}_{}", self.port)
   }
 }
 
@@ -264,7 +282,8 @@ async fn serve_page(
   // the page load hands out a cookie for those follow-up requests.
   state.require_token(query.t.as_deref().unwrap_or(""))?;
   let file = state.read_ui_file("index.html")?;
-  let cookie = format!("{COOKIE_NAME}={}; Path=/; SameSite=Strict; Max-Age=86400", state.token);
+  let cookie =
+    format!("{}={}; Path=/; SameSite=Strict; Max-Age=86400", state.cookie_name(), state.token);
   Ok(hardened(
     (
       StatusCode::OK,
@@ -295,7 +314,7 @@ async fn serve_asset(
   guard_host(&headers)?;
   let supplied = match query.t {
     Some(token) => token,
-    None => read_cookie(&headers, COOKIE_NAME),
+    None => read_cookie(&headers, &state.cookie_name()),
   };
   state.require_token(&supplied)?;
   let file = state.read_ui_file(&name)?;

@@ -238,7 +238,10 @@ alone is not access control: any page in any tab can reach `127.0.0.1`, so the
 token is what actually gates the review.
 
 - `GET /` requires `?t=<token>` and responds with a
-  `diffpane_token` cookie (`Path=/`, `SameSite=Strict`).
+  `diffpane_token_<port>` cookie (`Path=/`, `SameSite=Strict`). Cookies are
+  scoped to a host and ignore the port, so the port is in the name: two
+  instances on `127.0.0.1` otherwise overwrite each other's cookie and the
+  older tab reloads into 403s on its own assets.
 - `/assets/*` accepts the token from either the query string or that cookie,
   because the browser requests `app.css` and `app.js` on its own.
 - `/api/*` requires the token in an `X-Diffpane-Token` header, and nothing else.

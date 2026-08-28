@@ -22,11 +22,16 @@ async fn main() -> Result<()> {
   // Held, not dropped: a submit signals on this channel, and a closed one
   // would make the browser's submit fail on the way out.
   let (submit_tx, _submitted) = mpsc::channel(1);
-  let state =
-    Arc::new(AppState::new(Session::new(dir.into()), token.clone(), Assets::from_env(), submit_tx));
 
   let listener = bind(0).await?;
   let port = listener.local_addr()?.port();
+  let state = Arc::new(AppState::new(
+    Session::new(dir.into()),
+    token.clone(),
+    Assets::from_env(),
+    submit_tx,
+    port,
+  ));
   println!("{{\"url\":\"http://127.0.0.1:{port}/?t={token}\",\"token\":\"{token}\"}}");
 
   serve(listener, state, std::future::pending()).await

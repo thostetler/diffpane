@@ -7,7 +7,8 @@ members = ["cargo:."]
 ci = "github"
 # The installers to generate for each app
 installers = ["shell", "npm"]
-# Target platforms to build apps for (Rust target-triple syntax)
+# Target platforms to build apps for (Rust target-triple syntax). No Windows:
+# the cache and skill directories resolve through HOME, which it does not set.
 targets = ["aarch64-apple-darwin", "aarch64-unknown-linux-gnu", "x86_64-apple-darwin", "x86_64-unknown-linux-gnu"]
 # Path that installers should place binaries in
 install-path = "CARGO_HOME"

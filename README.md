@@ -192,14 +192,6 @@ Open the UI against fixture data without a repo:
 diffpane --working --no-open   # then append &fixture=1 to the URL
 ```
 
-### Releasing
-
-Pushing a `v*` tag builds macOS and Linux binaries, cuts a GitHub Release, and
-publishes the npm package via the repo's `NPM_TOKEN` secret. `dist plan` shows
-what a tag would produce. crates.io is a separate `cargo publish`.
-
-No Windows target: the cache and skill directories resolve through `HOME`.
-
 ## License
 
 MIT

@@ -9,14 +9,28 @@ runtime dependencies.
 
 ## Install
 
-Not packaged yet — build from source:
+```sh
+npm i -g diffpane
+```
+
+Or run it without installing: `npx diffpane`. Either way `npm` fetches a
+prebuilt binary; node is not needed at runtime.
+
+Without node:
+
+```sh
+curl -LsSf https://github.com/thostetler/diffpane/releases/latest/download/diffpane-installer.sh | sh
+```
+
+From source:
 
 ```sh
 git clone https://github.com/thostetler/diffpane
 cd diffpane && cargo install --path .
 ```
 
-Requires Rust 1.92+ and `git`.
+Needs `git`. Prebuilt binaries cover macOS and Linux (glibc 2.31+) on x86_64
+and arm64; building from source needs Rust 1.92+.
 
 ## Use
 

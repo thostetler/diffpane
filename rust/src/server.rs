@@ -12,7 +12,7 @@
 
 use std::collections::BTreeSet;
 use std::net::{Ipv4Addr, SocketAddr};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::Arc;
 
 use anyhow::{Context, Result};
@@ -30,6 +30,7 @@ use serde_json::{Value, json};
 use tokio::net::TcpListener;
 use tokio::sync::mpsc;
 
+use crate::assets::Assets;
 use crate::model::{Comment, Overall, ReviewState};
 use crate::session::{Session, now_iso};
 use crate::validate::{
@@ -44,7 +45,7 @@ const PORT_ATTEMPTS: u16 = 20;
 pub struct AppState {
   session: Session,
   token: String,
-  ui_dir: PathBuf,
+  assets: Assets,
   /// Fires when a submit is routed. The receiver starts a graceful shutdown,
   /// which is what lets the response finish flushing (regression #7).
   submitted: mpsc::Sender<()>,
@@ -53,13 +54,8 @@ pub struct AppState {
 }
 
 impl AppState {
-  pub fn new(
-    session: Session,
-    token: String,
-    ui_dir: PathBuf,
-    submitted: mpsc::Sender<()>,
-  ) -> Self {
-    Self { session, token, ui_dir, submitted, writes: std::sync::Mutex::new(()) }
+  pub fn new(session: Session, token: String, assets: Assets, submitted: mpsc::Sender<()>) -> Self {
+    Self { session, token, assets, submitted, writes: std::sync::Mutex::new(()) }
   }
 
   /// The report is rendered from the same session the server has been writing.
@@ -318,18 +314,8 @@ impl AppState {
     Err(ApiError::new("missing or invalid token", 403))
   }
 
-  /// Reads a file from the UI directory, refusing anything that escapes it.
   fn read_ui_file(&self, name: &str) -> ApiResult<Vec<u8>> {
-    let not_found = || ApiError::new("not found", 404);
-    if name.is_empty() {
-      return Err(not_found());
-    }
-    let root = std::fs::canonicalize(&self.ui_dir).map_err(|_| not_found())?;
-    let target = std::fs::canonicalize(root.join(name)).map_err(|_| not_found())?;
-    if !target.starts_with(&root) || !target.is_file() {
-      return Err(not_found());
-    }
-    std::fs::read(&target).map_err(|_| not_found())
+    self.assets.read(name).ok_or_else(|| ApiError::new("not found", 404))
   }
 
   /// The API is gated on a custom header and nothing else. A custom header

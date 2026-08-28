@@ -4,7 +4,6 @@
 //! in the binary, so this stays testable.
 
 use std::io::Write;
-use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use anyhow::{Context, Result};
@@ -12,6 +11,7 @@ use jiff::Timestamp;
 use tokio::sync::{mpsc, oneshot};
 
 use crate::args::Options;
+use crate::assets::Assets;
 use crate::model::{FileDiff, Hunks, Meta, Review, ReviewState, Totals};
 use crate::report::{Outcome, ReportInput, build_json, build_markdown, outcome_of};
 use crate::server::{AppState, bind, generate_token, serve};
@@ -23,24 +23,6 @@ use crate::{diff, scope};
 /// shutdown is graceful so an in-flight submit finishes first; this only bounds
 /// a connection that never completes (item 21).
 const SHUTDOWN_GRACE: std::time::Duration = std::time::Duration::from_secs(2);
-
-/// Where the browser assets live. The env var is for development against a
-/// checkout; a released binary sits next to the `ui/` directory it ships with.
-pub fn ui_dir() -> PathBuf {
-  if let Ok(dir) = std::env::var("DIFFPANE_UI_DIR")
-    && !dir.is_empty()
-  {
-    return PathBuf::from(dir);
-  }
-  let exe = std::env::current_exe().ok();
-  let beside = exe.as_deref().and_then(Path::parent).map(|dir| dir.join("ui"));
-  if let Some(dir) = beside.filter(|dir| dir.is_dir()) {
-    return dir;
-  }
-  let above =
-    exe.as_deref().and_then(Path::parent).and_then(Path::parent).map(|dir| dir.join("ui"));
-  above.filter(|dir| dir.is_dir()).unwrap_or_else(|| PathBuf::from("ui"))
-}
 
 fn totals(files: &[FileDiff]) -> Totals {
   Totals {
@@ -212,7 +194,7 @@ pub async fn run(options: &Options) -> Result<i32> {
 
   let token = generate_token();
   let (submit_tx, mut submit_rx) = mpsc::channel(1);
-  let state = Arc::new(AppState::new(built.session, token.clone(), ui_dir(), submit_tx));
+  let state = Arc::new(AppState::new(built.session, token.clone(), Assets::from_env(), submit_tx));
 
   let Totals { files, additions, deletions } = built.meta.totals;
   eprintln!("diffpane  {files} files, +{additions}/-{deletions}");
@@ -266,15 +248,6 @@ mod tests {
     let stamp = today();
     assert_eq!(stamp.len(), 10, "{stamp}");
     assert_eq!(stamp.matches('-').count(), 2, "{stamp}");
-  }
-
-  #[test]
-  fn honours_the_ui_directory_override() {
-    // Serial with the other env reader by construction: nothing else in this
-    // module reads DIFFPANE_UI_DIR.
-    unsafe { std::env::set_var("DIFFPANE_UI_DIR", "/tmp/diffpane-ui") };
-    assert_eq!(ui_dir(), PathBuf::from("/tmp/diffpane-ui"));
-    unsafe { std::env::remove_var("DIFFPANE_UI_DIR") };
   }
 
   fn seeded_session(state: &ReviewState) -> (tempfile::TempDir, Session) {

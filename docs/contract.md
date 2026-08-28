@@ -21,8 +21,10 @@ review.json     authored   optional narrative, supplied with --review
 comments.json   mutable    written by the UI via the API
 ```
 
-The UI is served from `ui/`. `index.html` is served at `/`, everything else in
-`ui/` is served verbatim under `/assets/<name>`. The UI is a static page: no
+The UI is `ui/`, compiled into the binary. `index.html` is served at `/`,
+everything else in `ui/` is served verbatim under `/assets/<name>`; setting
+`DIFFPANE_UI_DIR` serves that directory instead, for editing `ui/` without a
+rebuild. The UI is a static page: no
 build step, no bundler, no CDN or network fetches at runtime. Vanilla JS
 (ES2022 modules are fine), vanilla CSS. It must work in current Firefox and
 Chrome.

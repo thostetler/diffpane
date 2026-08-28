@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 use reqwest::header::{CONTENT_TYPE, COOKIE, HOST};
 use reqwest::{Client, Method, Response, StatusCode};
 use serde_json::{Value, json};
@@ -11,8 +9,10 @@ use crate::session::write_json;
 
 const TOKEN_HEADER: &str = "X-Diffpane-Token";
 
-fn ui_dir() -> PathBuf {
-  PathBuf::from(env!("CARGO_MANIFEST_DIR")).parent().expect("repo root").join("ui")
+/// The assets a released binary serves: compiled in, no directory involved.
+/// The override path has its own coverage in `assets`.
+fn assets() -> Assets {
+  Assets::Embedded
 }
 
 fn meta() -> Meta {
@@ -76,7 +76,7 @@ impl Harness {
 
     let token = generate_token();
     let (submit_tx, submit_rx) = mpsc::channel(1);
-    let state = Arc::new(AppState::new(session, token.clone(), ui_dir(), submit_tx));
+    let state = Arc::new(AppState::new(session, token.clone(), assets(), submit_tx));
     let listener = bind(0).await.expect("bind");
     let port = listener.local_addr().expect("addr").port();
 
@@ -552,7 +552,7 @@ async fn the_submit_response_survives_the_shutdown_it_triggers() {
 
   let token = generate_token();
   let (submit_tx, mut submit_rx) = mpsc::channel(1);
-  let state = Arc::new(AppState::new(session, token.clone(), ui_dir(), submit_tx));
+  let state = Arc::new(AppState::new(session, token.clone(), assets(), submit_tx));
   let listener = bind(0).await.expect("bind");
   let port = listener.local_addr().expect("addr").port();
   let served = tokio::spawn(serve(listener, state, async move {

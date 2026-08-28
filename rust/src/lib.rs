@@ -3,6 +3,7 @@
 //! the parity harness asserts.
 
 pub mod args;
+pub mod assets;
 pub mod browser;
 pub mod classify;
 pub mod cli;

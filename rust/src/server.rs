@@ -59,6 +59,11 @@ impl AppState {
   ) -> Self {
     Self { session, token, ui_dir, submitted }
   }
+
+  /// The report is rendered from the same session the server has been writing.
+  pub fn session(&self) -> &Session {
+    &self.session
+  }
 }
 
 pub fn generate_token() -> String {

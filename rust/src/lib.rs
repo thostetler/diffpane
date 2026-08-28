@@ -3,12 +3,15 @@
 //! the parity harness asserts.
 
 pub mod args;
+pub mod browser;
 pub mod classify;
+pub mod cli;
 pub mod diff;
 pub mod model;
 pub mod report;
 pub mod scope;
 pub mod server;
 pub mod session;
+pub mod skill;
 pub mod validate;
 pub mod wait;

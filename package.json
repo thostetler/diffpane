@@ -11,6 +11,12 @@
   ],
   "license": "MIT",
   "author": "Tim Hostetler",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/thostetler/diffpane.git"
+  },
+  "homepage": "https://github.com/thostetler/diffpane#readme",
+  "bugs": "https://github.com/thostetler/diffpane/issues",
   "type": "module",
   "bin": {
     "diffpane": "dist/cli.js"

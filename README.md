@@ -1,4 +1,6 @@
-![diffpane](docs/banner.png)
+<!-- Absolute: relative paths resolve against the registry on npmjs.com, not
+     against the repo, so a relative banner is a broken image there. -->
+![diffpane](https://raw.githubusercontent.com/thostetler/diffpane/main/docs/banner.png)
 
 Review a git diff in your browser, comment on the lines, hand the feedback back.
 
@@ -174,7 +176,8 @@ page needs it in the URL, and the API needs it in an `X-Diffpane-Token` header,
 which cross-origin callers cannot set without a preflight. Requests with a
 non-loopback `Host` are rejected, and mutations must be JSON.
 
-Details in [docs/contract.md](docs/contract.md).
+Details in
+[docs/contract.md](https://github.com/thostetler/diffpane/blob/main/docs/contract.md).
 
 ## Development
 

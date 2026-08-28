@@ -1,3 +1,5 @@
 node_modules/
 dist/
 *.tgz
+# Throwaway parity harness for the Rust port; 700MB of cloned fixture repos.
+spike/

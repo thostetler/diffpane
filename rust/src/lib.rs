@@ -8,3 +8,4 @@ pub mod model;
 pub mod report;
 pub mod scope;
 pub mod session;
+pub mod validate;

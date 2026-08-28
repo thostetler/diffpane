@@ -215,10 +215,8 @@ diffpane --working --no-open   # then append &fixture=1 to the URL
 cuts a GitHub Release, and attaches a shell installer and an npm package.
 `dist plan` shows what a tag would produce without pushing one.
 
-Publishing that npm package still needs an `NPM_TOKEN` secret and
-`publish-jobs = ["npm"]` in `dist-workspace.toml`; without them the tarball is
-built and attached but not pushed to the registry. crates.io is a separate
-`cargo publish`.
+The npm package is published from that same tag, through the repo's
+`NPM_TOKEN` secret. crates.io is a separate `cargo publish`.
 
 Windows is deliberately not in `targets`: the cache and skill directories
 resolve through `HOME`, which Windows does not set.

@@ -176,7 +176,7 @@ async fn host_review(
       // The server ended on its own, which the wait cannot see. Report why.
       return match stopped {
         Ok(Err(error)) => Err(error),
-        Ok(Ok(())) => Ok(Ending::Interrupt),
+        Ok(Ok(())) => Ok(Ending::ServerStopped),
         Err(error) => Err(error).context("server task"),
       };
     }
@@ -206,7 +206,12 @@ pub async fn run(options: &Options) -> Result<i32> {
 
   let Totals { files, additions, deletions } = built.meta.totals;
   eprintln!("diffpane  {files} files, +{additions}/-{deletions}");
-  host_review(Arc::clone(&state), &mut submit_rx, options, &token, listener).await?;
+  let ending = host_review(Arc::clone(&state), &mut submit_rx, options, &token, listener).await?;
+  match ending {
+    Ending::Timeout => eprintln!("timed out waiting for the review"),
+    Ending::ServerStopped => eprintln!("the review server stopped early"),
+    Ending::Submitted | Ending::Interrupt => {}
+  }
 
   // A connection that outlived the shutdown grace is still writing
   // `comments.json`; the report waits for it rather than reading underneath it.

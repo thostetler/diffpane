@@ -14,6 +14,10 @@ pub enum Ending {
   Submitted,
   Timeout,
   Interrupt,
+  /// The server task returned before anything asked it to. Not produced here —
+  /// the wait cannot see it — but the caller has no other way to say so, and
+  /// calling it an interrupt blamed the human for a crash.
+  ServerStopped,
 }
 
 /// Resolves when the review is submitted, the timeout fires, or the user quits.

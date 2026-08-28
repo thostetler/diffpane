@@ -77,6 +77,21 @@ pub struct Built {
   pub meta: Meta,
 }
 
+/// Re-running on the same branch the same day reuses the session directory, so
+/// both of the previous run's mutable artefacts have to go. Comments would
+/// replay a stale `submitted: true` and anchor to hunk ids that have moved; a
+/// review left behind by an earlier `--review` would let chapters claim hunk
+/// ids this diff does not have and make `PUT /api/progress` validate against a
+/// chapter set nobody asked for.
+fn clear_previous_run(session: &Session) -> Result<()> {
+  write_json(&session.state_path(), &ReviewState::default())?;
+  match std::fs::remove_file(session.review_path()) {
+    Ok(()) => Ok(()),
+    Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+    Err(error) => Err(error).context(format!("remove {}", session.review_path().display())),
+  }
+}
+
 /// Builds the session on disk, or `None` when there is nothing to review.
 pub fn build_session(repo: &gix::Repository, options: &Options) -> Result<Option<Built>> {
   let root = repo.workdir().context("diffpane needs a work tree")?.to_path_buf();
@@ -112,10 +127,7 @@ pub fn build_session(repo: &gix::Repository, options: &Options) -> Result<Option
   };
   write_json(&session.meta_path(), &meta)?;
   write_json(&session.hunks_path(), &Hunks { files: files.clone() })?;
-  // Always start clean. Re-running on the same branch the same day reuses the
-  // session directory, and inheriting the last run's comments would replay a
-  // stale `submitted: true` and anchor comments to hunk ids that have moved.
-  write_json(&session.state_path(), &ReviewState::default())?;
+  clear_previous_run(&session)?;
   if let Some(file) = options.review_file.as_deref() {
     install_review(&session, file, &files)?;
   }
@@ -287,6 +299,26 @@ mod tests {
     write_json(&session.hunks_path(), &Hunks::default()).unwrap();
     write_json(&session.state_path(), state).unwrap();
     (temp, session)
+  }
+
+  #[test]
+  fn a_rerun_without_review_drops_the_previous_narrative() {
+    let state = ReviewState { submitted: true, ..ReviewState::default() };
+    let (_temp, session) = seeded_session(&state);
+    let stale = Review { title: None, story: None, chapters: Vec::new(), file_notes: None };
+    write_json(&session.review_path(), &stale).unwrap();
+
+    clear_previous_run(&session).unwrap();
+
+    assert!(!session.review_path().exists(), "stale chapters point at hunks this diff lost");
+    assert!(!session.state().unwrap().submitted, "a previous submit is not this run's");
+  }
+
+  #[test]
+  fn clearing_a_session_that_never_had_a_review_is_fine() {
+    let (_temp, session) = seeded_session(&ReviewState::default());
+    clear_previous_run(&session).unwrap();
+    assert!(!session.review_path().exists());
   }
 
   #[test]

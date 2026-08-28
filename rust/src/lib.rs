@@ -5,5 +5,6 @@
 pub mod classify;
 pub mod diff;
 pub mod model;
+pub mod report;
 pub mod scope;
 pub mod session;

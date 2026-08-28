@@ -66,10 +66,15 @@ impl AppState {
   }
 }
 
+/// 16 bytes from the OS. This token is the whole of the access control —
+/// loopback is not access control, per `docs/contract.md` — so it must not come
+/// from `fastrand`, which is a fast PRNG and not a CSPRNG.
 pub fn generate_token() -> String {
-  (0..16).fold(String::with_capacity(32), |mut out, _| {
+  let mut bytes = [0u8; 16];
+  getrandom::fill(&mut bytes).expect("the OS must be able to produce 16 random bytes");
+  bytes.iter().fold(String::with_capacity(32), |mut out, byte| {
     use std::fmt::Write;
-    let _ = write!(out, "{:02x}", fastrand::u8(..));
+    let _ = write!(out, "{byte:02x}");
     out
   })
 }

@@ -11,6 +11,7 @@ repository = "https://github.com/thostetler/diffpane"
 anyhow = "1.0.104"
 axum = "0.8.9"
 fastrand = "2.5.0"
+getrandom = "0.4.3"
 gix = { version = "0.87.1", features = ["blob-diff", "status", "attributes", "worktree-mutation", "dirwalk"] }
 jiff = "0.2.35"
 serde = { version = "1.0.229", features = ["derive"] }

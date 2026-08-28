@@ -322,6 +322,7 @@ dependencies = [
  "anyhow",
  "axum",
  "fastrand",
+ "getrandom",
  "gix",
  "jiff",
  "reqwest",

@@ -141,6 +141,31 @@ test('rejects mutations that are not JSON', async () => {
   assert.equal(response.status, 415);
 });
 
+test('rejects a content type that only mentions JSON in a parameter', async () => {
+  // `text/plain; x=application/json` is a CORS-simple type, so a substring
+  // match here reopened the very hole the check exists to close.
+  const response = await fetch(`${base}/api/comments`, {
+    method: 'POST',
+    headers: {
+      'X-Diffpane-Token': TOKEN,
+      'Content-Type': 'text/plain; x=application/json',
+    },
+    body: JSON.stringify({ anchor: ANCHOR, verdict: 'fix', body: 'x' }),
+  });
+  assert.equal(response.status, 415);
+});
+
+test('accepts application/json with parameters and odd casing', async () => {
+  const response = await api('/api/comments', {
+    method: 'POST',
+    headers: { 'Content-Type': 'Application/JSON; charset=utf-8' },
+    body: JSON.stringify({ anchor: ANCHOR, verdict: 'ok', body: 'fine' }),
+  });
+  assert.equal(response.status, 201);
+  const comment = (await response.json()) as Comment;
+  await api(`/api/comments/${comment.id}`, { method: 'DELETE' });
+});
+
 test('refuses to serve files outside the ui directory', async () => {
   const response = await fetch(`${base}/assets/../../../etc/passwd?t=${TOKEN}`);
   assert.ok(response.status === 404 || response.status === 403, `got ${response.status}`);

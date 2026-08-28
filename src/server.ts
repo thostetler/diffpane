@@ -57,6 +57,15 @@ function isLoopbackHost(host: string | undefined): boolean {
   return name === '127.0.0.1' || name === 'localhost' || name === '::1';
 }
 
+/**
+ * The media type's essence: everything before the first `;`, lowercased. A
+ * substring match accepted `text/plain; x=application/json`, which is a
+ * CORS-simple content type and so defeats the point of requiring JSON.
+ */
+function mediaTypeEssence(header: string | undefined): string {
+  return (header ?? '').split(';')[0]?.trim().toLowerCase() ?? '';
+}
+
 async function readRequestBody(request: IncomingMessage): Promise<Record<string, unknown>> {
   const chunks: Buffer[] = [];
   let size = 0;
@@ -152,8 +161,8 @@ class RequestHandler {
       throw new ApiError('missing or invalid token', 403);
     }
     const method = request.method ?? 'GET';
-    const contentType = String(request.headers['content-type'] ?? '');
-    if (method !== 'GET' && !contentType.includes('application/json')) {
+    const mediaType = mediaTypeEssence(request.headers['content-type']);
+    if (method !== 'GET' && mediaType !== 'application/json') {
       throw new ApiError('content-type must be application/json', 415);
     }
     const result = await this.route(request, method, url.pathname);

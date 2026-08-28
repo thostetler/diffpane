@@ -217,16 +217,21 @@ pub fn router(state: Arc<AppState>) -> Router {
 /// Port 0 is honoured as "any", so callers get whatever the OS handed out.
 pub async fn bind(preferred: u16) -> Result<TcpListener> {
   let mut port = preferred;
+  // Counted, not compared against `preferred + PORT_ATTEMPTS`, which overflows
+  // u16 for a preferred port near the top of the range.
+  let mut attempts = PORT_ATTEMPTS;
   loop {
     let address = SocketAddr::from((Ipv4Addr::LOCALHOST, port));
     match TcpListener::bind(address).await {
       Ok(listener) => return Ok(listener),
-      Err(error)
-        if error.kind() == std::io::ErrorKind::AddrInUse
-          && preferred != 0
-          && port < preferred + PORT_ATTEMPTS =>
-      {
-        port += 1;
+      Err(error) if error.kind() == std::io::ErrorKind::AddrInUse && preferred != 0 => {
+        match port.checked_add(1).filter(|_| attempts > 0) {
+          Some(next) => {
+            port = next;
+            attempts -= 1;
+          }
+          None => return Err(error).with_context(|| format!("bind 127.0.0.1:{port}")),
+        }
       }
       Err(error) => return Err(error).with_context(|| format!("bind 127.0.0.1:{port}")),
     }

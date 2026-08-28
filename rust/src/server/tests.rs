@@ -635,6 +635,15 @@ async fn walks_forward_when_the_preferred_port_is_taken() {
   assert_ne!(second.local_addr().expect("addr").port(), port);
 }
 
+#[tokio::test]
+async fn walks_forward_from_the_top_of_the_port_range() {
+  // `preferred + PORT_ATTEMPTS` overflowed u16 here, which panics in a debug
+  // build — reachable with `--port 65535` when the port is busy.
+  let held = bind(65535).await.expect("bind");
+  assert_eq!(held.local_addr().expect("addr").port(), 65535);
+  assert!(bind(65535).await.is_err(), "nowhere left to walk to");
+}
+
 #[test]
 fn strips_ports_from_host_headers() {
   assert_eq!(host_name("127.0.0.1:8080"), "127.0.0.1");

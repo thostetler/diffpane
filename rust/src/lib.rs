@@ -2,6 +2,7 @@
 //! this crate has to produce the same JSON the TypeScript did, which is what
 //! the parity harness asserts.
 
+pub mod args;
 pub mod classify;
 pub mod diff;
 pub mod model;
@@ -10,3 +11,4 @@ pub mod scope;
 pub mod server;
 pub mod session;
 pub mod validate;
+pub mod wait;

@@ -97,6 +97,33 @@ Notes for the UI:
   intact. The UI is responsible for escaping and tab rendering.
 - Files and hunks are already in a sensible order; do not re-sort.
 
+### Known deviations from `git diff`
+
+diffpane produces *a* correct diff, not always the *same* diff your `git` would
+print. The differences are all cases where more than one answer is valid, and
+they are pinned deliberately so a review shows the same thing on every machine
+regardless of the reader's git config.
+
+- **Algorithm.** Histogram, always. `gix-imara-diff`'s Myers does not match
+  git's, and no git config reproduces it.
+- **Rename tracking.** 50% similarity, no copy detection, always — git's
+  defaults, but not read from `diff.renames`.
+- **Edit-script ties.** Histogram sometimes picks a different, equally short
+  edit script than git's. Seen once in 469 commits: one add/del pair moved.
+- **Rename ties.** When one deleted file is a plausible source for several added
+  ones, gix and git may pick different destinations. Seen once in 469 commits.
+- **Rename similarity.** git scores candidates with `diffcore-delta` hashing,
+  gix with the diff itself, so a pair near the 50% threshold can land on
+  opposite sides. Seen once in 469 commits — git said 66%, gix said no.
+- **Function context.** Reimplemented to git's default `xfuncname`. A file with
+  a `diff=<lang>` gitattribute gets that default instead of its language driver.
+- **Type change to a submodule.** Rendered as the `Subproject commit` side only;
+  git shows both sides.
+
+`spike/parity.sh` asserts byte-equality against the TypeScript pipeline (which
+shells out to real git) everywhere except the three commits listed in its
+allow-list, which are the three cases above.
+
 ## review.json
 
 Authored by Claude. The UI must degrade gracefully if it is missing or if

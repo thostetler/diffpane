@@ -39,6 +39,8 @@ export interface ResolvedScope {
   scope: Scope;
   diffArgs: string[];
   base: string;
+  /** Kept apart from `diffArgs`: a pathspec has to follow git's own flags. */
+  paths: string[];
 }
 
 export function git(root: string, args: string[]): string {
@@ -80,13 +82,18 @@ export function defaultBase(root: string): string {
 }
 
 export function resolveScope(root: string, options: ScopeOptions): ResolvedScope {
-  const resolved = selectScope(root, options);
-  const paths = options.paths ?? [];
-  if (paths.length > 0) resolved.diffArgs = [...resolved.diffArgs, '--', ...paths];
-  return resolved;
+  return { ...selectScope(root, options), paths: options.paths ?? [] };
 }
 
-function selectScope(root: string, options: ScopeOptions): ResolvedScope {
+/** `git diff <args> --raw -z -- <pathspec>`: the flags come first or git reads
+ * them as pathspecs and silently returns a plain patch. */
+function withPaths(diffArgs: string[], flags: string[], paths: string[]): string[] {
+  return paths.length === 0
+    ? ['diff', ...diffArgs, ...flags]
+    : ['diff', ...diffArgs, ...flags, '--', ...paths];
+}
+
+function selectScope(root: string, options: ScopeOptions): Omit<ResolvedScope, 'paths'> {
   if (options.range !== undefined) {
     return { scope: 'range', diffArgs: [options.range], base: options.range };
   }
@@ -114,8 +121,12 @@ function splitNul(blob: string): string[] {
 }
 
 /** path -> counts. Renames and copies key on the new path. */
-export function readNumstat(root: string, diffArgs: string[]): Map<string, NumstatEntry> {
-  const fields = splitNul(git(root, ['diff', ...diffArgs, '--numstat', '-z']));
+export function readNumstat(
+  root: string,
+  diffArgs: string[],
+  paths: string[] = [],
+): Map<string, NumstatEntry> {
+  const fields = splitNul(git(root, withPaths(diffArgs, ['--numstat', '-z'], paths)));
   const stats = new Map<string, NumstatEntry>();
   let i = 0;
   while (i < fields.length) {
@@ -137,8 +148,12 @@ export function readNumstat(root: string, diffArgs: string[]): Map<string, Numst
 }
 
 /** path -> status. Renames and copies key on the new path. */
-export function readRaw(root: string, diffArgs: string[]): Map<string, RawEntry> {
-  const fields = splitNul(git(root, ['diff', ...diffArgs, '--raw', '-z']));
+export function readRaw(
+  root: string,
+  diffArgs: string[],
+  paths: string[] = [],
+): Map<string, RawEntry> {
+  const fields = splitNul(git(root, withPaths(diffArgs, ['--raw', '-z'], paths)));
   const entries = new Map<string, RawEntry>();
   let i = 0;
   while (i < fields.length) {
@@ -156,6 +171,6 @@ export function readRaw(root: string, diffArgs: string[]): Map<string, RawEntry>
   return entries;
 }
 
-export function readPatch(root: string, diffArgs: string[]): string {
-  return git(root, ['diff', ...diffArgs, '--no-color', '--unified=3']);
+export function readPatch(root: string, diffArgs: string[], paths: string[] = []): string {
+  return git(root, withPaths(diffArgs, ['--no-color', '--unified=3'], paths));
 }

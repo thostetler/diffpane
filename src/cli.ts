@@ -25,8 +25,8 @@ function version(): string {
 }
 
 function buildSession(options: Options, root: string): { session: Session; meta: Meta } | null {
-  const { scope, diffArgs, base } = resolveScope(root, options);
-  const files = assembleDiff(root, diffArgs);
+  const { scope, diffArgs, base, paths } = resolveScope(root, options);
+  const files = assembleDiff(root, diffArgs, paths);
   if (files.length === 0) return null;
 
   const branch = currentBranch(root);
@@ -40,7 +40,9 @@ function buildSession(options: Options, root: string): { session: Session; meta:
     scope,
     base,
     head: branch,
-    diff_cmd: ['git', 'diff', ...diffArgs].join(' ').trimEnd(),
+    diff_cmd: ['git', 'diff', ...diffArgs, ...(paths.length > 0 ? ['--', ...paths] : [])]
+      .join(' ')
+      .trimEnd(),
     generated_at: nowIso(),
     totals: computeTotals(files),
   };

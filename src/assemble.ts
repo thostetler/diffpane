@@ -9,10 +9,10 @@ import type { FileDiff, Totals } from './types.ts';
  * patch-driven list silently drops them. The patch supplies hunks and nothing
  * else.
  */
-export function assembleDiff(root: string, diffArgs: string[]): FileDiff[] {
-  const raw = readRaw(root, diffArgs);
-  const numstat = readNumstat(root, diffArgs);
-  const parsed = parseUnifiedDiff(readPatch(root, diffArgs));
+export function assembleDiff(root: string, diffArgs: string[], paths: string[] = []): FileDiff[] {
+  const raw = readRaw(root, diffArgs, paths);
+  const numstat = readNumstat(root, diffArgs, paths);
+  const parsed = parseUnifiedDiff(readPatch(root, diffArgs, paths));
   const hunksByPath = new Map(parsed.map((file) => [file.path, file]));
 
   return [...raw.entries()].map(([path, meta], index) => {

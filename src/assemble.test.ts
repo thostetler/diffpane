@@ -113,6 +113,20 @@ test('reviews a merge commit via its first parent', () => {
   assert.deepEqual(files.map((file) => file.path), ['side.ts']);
 });
 
+test('narrows the diff to a pathspec', () => {
+  // The pathspec used to be appended to the scope args, so `--raw`, `-z` and
+  // `--numstat` reached git as pathspecs and every read came back as a plain
+  // patch with no file list at all.
+  writeFileSync(join(repo, 'kept.ts'), 'export const k = 1;\n');
+  writeFileSync(join(repo, 'ignored.ts'), 'export const i = 1;\n');
+  git('add', '-A');
+  const { diffArgs, paths } = resolveScope(repo, { scope: 'staged', paths: ['kept.ts'] });
+  const files = assembleDiff(repo, diffArgs, paths);
+  assert.deepEqual(files.map((file) => file.path), ['kept.ts']);
+  assert.equal(files[0]?.additions, 1);
+  git('reset', '-q', '--hard', 'HEAD');
+});
+
 test('flags lockfiles as noise and detects language', () => {
   writeFileSync(join(repo, 'pnpm-lock.yaml'), 'lockfileVersion: 9\n');
   writeFileSync(join(repo, 'app.ts'), 'export const c = 3;\n');

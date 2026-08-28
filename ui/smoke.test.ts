@@ -31,7 +31,21 @@ interface State {
 
 const ROOT = join(import.meta.dirname, '..');
 const MANIFEST = join(ROOT, 'rust', 'Cargo.toml');
-const SERVER = join(ROOT, 'rust', 'target', 'debug', 'examples', 'serve-fixture');
+
+/**
+ * Where cargo actually puts the build. Assuming `rust/target` meant that on a
+ * machine with CARGO_TARGET_DIR set the build succeeded, the spawn hit ENOENT,
+ * and the suite blamed the server for exiting without an address.
+ */
+function serverPath(): string {
+  const metadata = execFileSync(
+    'cargo',
+    ['metadata', '--no-deps', '--format-version', '1', '--manifest-path', MANIFEST],
+    { encoding: 'utf8' },
+  );
+  const { target_directory } = JSON.parse(metadata) as { target_directory: string };
+  return join(target_directory, 'debug', 'examples', 'serve-fixture');
+}
 
 const FIXTURE = JSON.parse(
   readFileSync(join(import.meta.dirname, 'fixture.json'), 'utf8'),
@@ -83,7 +97,7 @@ before(async () => {
   writeJson(join(dir, 'hunks.json'), FIXTURE.hunks);
   writeJson(join(dir, 'review.json'), FIXTURE.review);
 
-  server = spawn(SERVER, [dir], { stdio: ['ignore', 'pipe', 'inherit'] });
+  server = spawn(serverPath(), [dir], { stdio: ['ignore', 'pipe', 'inherit'] });
   const address = JSON.parse(await firstLine(server.stdout!)) as Address;
   url = address.url;
   browser = await chromium.launch();

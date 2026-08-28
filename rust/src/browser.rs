@@ -16,11 +16,19 @@ fn launcher() -> (&'static str, &'static [&'static str]) {
 /// the review, since the URL is printed either way.
 pub fn open(url: &str) {
   let (command, args) = launcher();
-  let _ = Command::new(command)
+  let spawned = Command::new(command)
     .args(args)
     .arg(url)
     .stdin(Stdio::null())
     .stdout(Stdio::null())
     .stderr(Stdio::null())
     .spawn();
+  // The launcher exits as soon as it has handed the URL over, but nobody was
+  // reaping it, so it sat as a zombie for the review's whole hour. Waiting on
+  // a thread keeps `open` non-blocking.
+  if let Ok(mut child) = spawned {
+    std::thread::spawn(move || {
+      let _ = child.wait();
+    });
+  }
 }

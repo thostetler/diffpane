@@ -157,8 +157,12 @@ pub fn parse(argv: Vec<String>) -> Result<Parsed> {
   let mut parser = Parser { args: argv.into_iter(), rest: Vec::new() };
 
   while let Some(arg) = parser.args.next() {
+    // `--` itself is the separator, never a flag with an inline value: reading
+    // `--=x` as one dropped the `x` instead of taking it as a pathspec.
     let (flag, inline) = match arg.split_once('=') {
-      Some((flag, value)) if flag.starts_with("--") => (flag.to_owned(), Some(value.to_owned())),
+      Some((flag, value)) if flag.starts_with("--") && flag.len() > 2 => {
+        (flag.to_owned(), Some(value.to_owned()))
+      }
       _ => (arg.clone(), None),
     };
     match flag.as_str() {
@@ -192,11 +196,22 @@ pub fn parse(argv: Vec<String>) -> Result<Parsed> {
     }
   }
 
+  let selected = selection.named();
   if install_skill {
+    // It installs a file and exits, so every other flag was a misunderstanding
+    // about what the command was going to do. Saying so beats obeying half of
+    // it in silence.
+    if options != Options::default()
+      || port.is_some()
+      || timeout.is_some()
+      || !parser.rest.is_empty()
+      || !selected.is_empty()
+    {
+      bail!("--install-skill takes no options but --skill-dir");
+    }
     return Ok(Parsed::InstallSkill { skill_dir });
   }
 
-  let selected = selection.named();
   if selected.len() > 1 {
     let names: Vec<String> = selected.iter().map(|name| format!("--{name}")).collect();
     bail!("pick one scope, not {}", names.join(" and "));
@@ -289,6 +304,21 @@ mod tests {
   fn rejects_unknown_options_and_missing_values() {
     assert!(parse_args(&["--nonsense"]).is_err());
     assert!(parse_args(&["--base"]).is_err());
+  }
+
+  #[test]
+  fn a_bare_double_dash_never_carries_an_inline_value() {
+    // `--=x` split into the `--` separator and silently dropped the `x`.
+    assert_eq!(parse_args(&["--=x"]).unwrap_err().to_string(), "unknown option: --=x");
+    assert_eq!(options(&["--", "x"]).paths, ["x"]);
+  }
+
+  #[test]
+  fn install_skill_refuses_the_options_it_would_ignore() {
+    let error = parse_args(&["--install-skill", "--working"]).unwrap_err().to_string();
+    assert_eq!(error, "--install-skill takes no options but --skill-dir");
+    assert!(parse_args(&["--install-skill", "--port", "9000"]).is_err());
+    assert!(parse_args(&["--install-skill", "src/a.ts"]).is_err());
   }
 
   #[test]

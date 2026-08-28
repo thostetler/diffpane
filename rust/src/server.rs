@@ -193,9 +193,10 @@ pub fn router(state: Arc<AppState>) -> Router {
     .route("/progress", put(put_progress))
     .route("/overall", put(put_overall))
     .route("/submit", post(post_submit))
-    // Both arms answer like the TypeScript did: it checked the token before
-    // routing, so an unknown path and a wrong method are the same 404 and
-    // neither tells an unauthenticated caller which endpoints exist.
+    // Both arms answer alike: the token is checked before the path is, so to an
+    // unauthenticated caller an unknown path and a wrong method are the same
+    // 403 and neither reveals which endpoints exist. Past the token, a
+    // mutation without `application/json` still answers 415 before 404.
     .fallback(api_not_found)
     .method_not_allowed_fallback(api_not_found);
 

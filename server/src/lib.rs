@@ -1,4 +1,4 @@
-//! diffpane's Rust backend. The browser UI and `docs/contract.md` are frozen:
+//! diffpane's backend. The browser UI and the JSON between them are frozen:
 //! this crate has to produce the same JSON the TypeScript did, which is what
 //! the parity harness asserts.
 

@@ -22,7 +22,7 @@
               "i": 1,
               "new": 2,
               "old": null,
-              "text": "*.flt filter=spike",
+              "text": "*.flt filter=redact",
               "type": "add"
             },
             {

@@ -7,58 +7,61 @@
 #
 # The comparison is exact after `jq -S` (key order only). Any difference is a
 # failure, including hunk ids, which are positional. The TypeScript reference
-# is gone; `spike/golden/` is what it left behind.
+# is gone; `parity/golden/` is what it left behind.
 set -euo pipefail
 
 here=$(cd "$(dirname "$0")" && pwd)
 root=$(cd "$here/.." && pwd)
 work=${PARITY_DIR:-$here/repos}
 golden_dir=$here/golden
-rust=$root/rust/target/release/dump-hunks
+manifest=$root/server/Cargo.toml
 
 pass=0
 fail=0
 
+# Ask cargo where the build landed: CARGO_TARGET_DIR moves it, and assuming
+# `server/target` would spawn a binary that is not there.
 build() {
-  (cd "$root/rust" && cargo build --release --bin dump-hunks -q)
+  cargo build --release --bin dump-hunks -q --manifest-path "$manifest"
+  local target
+  target=$(cargo metadata --no-deps --format-version 1 --manifest-path "$manifest" |
+    jq -r .target_directory)
+  dump_hunks=$target/release/dump-hunks
 }
 
-# The golden files freeze what parity established against the TypeScript while
-# it was still here, so the fixture matrix keeps failing loudly on an
-# unintended output change now that it is not.
 golden_file() { # $1 label
   echo "$golden_dir/$(echo "$1" | tr ' ' '-').json"
 }
 
-golden_write() { # $1 label, $2 repo, $3 rust args (space separated)
+golden_write() { # $1 label, $2 repo, $3 dump-hunks args (space separated)
   local file
   file=$(golden_file "$1")
   set -o noglob
   # shellcheck disable=SC2206
-  local rust_args=($3)
+  local hunk_args=($3)
   set +o noglob
-  "$rust" "$2" "${rust_args[@]}" | jq -S . >"$file"
+  "$dump_hunks" "$2" "${hunk_args[@]}" | jq -S . >"$file"
   echo "wrote $(basename "$file")"
 }
 
-golden_check() { # $1 label, $2 repo, $3 rust args (space separated)
+golden_check() { # $1 label, $2 repo, $3 dump-hunks args (space separated)
   local label=$1 file
   file=$(golden_file "$label")
   set -o noglob
   # shellcheck disable=SC2206
-  local rust_args=($3)
+  local hunk_args=($3)
   set +o noglob
   if [ ! -f "$file" ]; then
     fail=$((fail + 1))
     echo "FAIL $label (no golden file; run parity.sh golden)"
     return
   fi
-  if "$rust" "$2" "${rust_args[@]}" | jq -S . | diff -q "$file" - >/dev/null; then
+  if "$dump_hunks" "$2" "${hunk_args[@]}" | jq -S . | diff -q "$file" - >/dev/null; then
     pass=$((pass + 1))
   else
     fail=$((fail + 1))
     echo "FAIL $label"
-    "$rust" "$2" "${rust_args[@]}" | jq -S . | diff "$file" - | head -40 || true
+    "$dump_hunks" "$2" "${hunk_args[@]}" | jq -S . | diff "$file" - | head -40 || true
   fi
 }
 

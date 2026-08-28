@@ -13,7 +13,7 @@ narrated walkthrough in chat, this is the wrong skill.
 
 The tool is a standalone CLI. Your job is the narrative and the follow-through;
 the CLI does everything else. If `diffpane` is not on PATH, stop and tell the
-user to install it — `cargo install --path rust` from a clone of
+user to install it — `cargo install --path server` from a clone of
 `https://github.com/thostetler/diffpane` — do not try to review the
 diff yourself instead.
 

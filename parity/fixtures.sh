@@ -25,19 +25,17 @@ git config user.name 'Fixture'
 git config user.email 'fixture@example.com'
 git config commit.gpgsign false
 # A clean/smudge filter, so the worktree bytes differ from the stored blob.
-git config filter.spike.clean 'sed s/SECRET/REDACTED/'
-git config filter.spike.smudge 'cat'
+git config filter.redact.clean 'sed s/SECRET/REDACTED/'
+git config filter.redact.smudge 'cat'
 
 write_binary() { # $1 path, $2 seed byte
   printf '\x89PNG\r\n\x1a\n' >"$1"
   head -c 64 /dev/zero | tr '\0' "$2" >>"$1"
 }
 
-# ---------------------------------------------------------------- base commit
-
 cat >.gitattributes <<'EOF'
 *.crlf text eol=crlf
-*.flt filter=spike
+*.flt filter=redact
 *.bin binary
 EOF
 
@@ -136,8 +134,6 @@ git add -A
 git commit -qm 'base'
 base=$(git rev-parse HEAD)
 
-# ------------------------------------------------------- merge commit (committed only)
-
 if [ "$mode" = committed ]; then
   git checkout -q -b side
   printf 'side branch line\n' >side.txt
@@ -150,8 +146,6 @@ if [ "$mode" = committed ]; then
   git merge -q --no-ff -m 'merge side into main' side
   merge=$(git rev-parse HEAD)
 fi
-
-# ------------------------------------------------------------------- the edits
 
 apply_edits() {
   # text change, both directions, plus a hunk at the file head and tail

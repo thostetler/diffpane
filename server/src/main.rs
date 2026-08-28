@@ -7,7 +7,7 @@ use diffpane::cli::{print_report, run};
 use diffpane::skill::{default_skill_dir, install};
 
 /// Reserved for an error that stopped the review before a verdict existed;
-/// `docs/contract.md` lists 0/1/2 for the review's own outcomes.
+/// 0/1/2 belong to the review's own outcomes.
 const EXIT_ERROR: u8 = 3;
 
 async fn dispatch() -> anyhow::Result<i32> {

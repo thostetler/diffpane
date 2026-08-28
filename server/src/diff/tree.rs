@@ -8,7 +8,7 @@ use crate::model::FileStatus;
 
 /// git's `diff.renames` defaults, pinned rather than read from the user's
 /// config so a review shows the same files everywhere — the same reason the
-/// diff algorithm is pinned. See docs/contract.md.
+/// diff algorithm is pinned.
 ///
 /// `limit` is the one place gix does not match git: git budgets
 /// `diff.renameLimit` *squared* similarity checks (1000² by default) while

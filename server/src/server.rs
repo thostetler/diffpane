@@ -1,6 +1,6 @@
 //! The local HTTP server: the browser UI plus the JSON API it drives.
 //!
-//! The security posture is `docs/contract.md`'s and is not negotiable:
+//! The security posture is not negotiable:
 //! loopback-literal `Host`, the page gated on `?t=`, `/api/*` gated on the
 //! `X-Diffpane-Token` header *only* (a cookie there would hand CSRF straight
 //! back), and `application/json` required on mutations.
@@ -91,8 +91,8 @@ impl AppState {
 }
 
 /// 16 bytes from the OS. This token is the whole of the access control —
-/// loopback is not access control, per `docs/contract.md` — so it must not come
-/// from `fastrand`, which is a fast PRNG and not a CSPRNG.
+/// loopback is not access control — so it must not come from `fastrand`, which
+/// is a fast PRNG and not a CSPRNG.
 pub fn generate_token() -> String {
   let mut bytes = [0u8; 16];
   getrandom::fill(&mut bytes).expect("the OS must be able to produce 16 random bytes");
@@ -128,8 +128,8 @@ fn host_name(host: &str) -> &str {
 }
 
 /// Rejects DNS-rebinding: the browser must be talking to a loopback literal.
-/// `localhost` is a name, and `docs/contract.md` says literal — a resolver that
-/// hands back something else is precisely the attack.
+/// `localhost` is a name, not a literal — a resolver that hands back something
+/// else is precisely the attack.
 fn is_loopback_host(headers: &HeaderMap) -> bool {
   let Some(host) = headers.get(HOST).and_then(|value| value.to_str().ok()) else {
     return false;

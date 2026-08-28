@@ -1,8 +1,8 @@
 //! Argument parsing.
 //!
 //! Hand-rolled rather than clap: `USAGE` is user-facing text that the skill
-//! quotes, and `--help` output is part of the CLI surface `docs/contract.md`
-//! freezes, so it is spelled out here instead of generated.
+//! quotes, and `--help` output is part of the frozen CLI surface, so it is
+//! spelled out here instead of generated.
 
 use anyhow::{Result, bail};
 

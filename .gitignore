@@ -1,8 +1,8 @@
 node_modules/
 dist/
 *.tgz
-# Cloned fixture repos and build artefacts; ~700MB. Nothing builds under
-# spike/ any more, but old checkouts still have the directory.
-spike/target/
-spike/repos/
-rust/target/
+# Local review notes and working docs, never shipped.
+dev/
+# Cloned fixture repos, ~700MB when the matrix has run.
+parity/repos/
+server/target/

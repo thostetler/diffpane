@@ -1,5 +1,5 @@
-//! The wire contract, verbatim. `docs/contract.md` is normative and the browser
-//! UI reads these shapes directly, so the JSON is snake_case and stays that way.
+//! The wire contract, verbatim: the browser UI reads these shapes directly, so
+//! the JSON is snake_case and stays that way.
 
 use serde::{Deserialize, Serialize};
 

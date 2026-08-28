@@ -13,7 +13,7 @@ use crate::model::{DiffLine, Hunk, LineType};
 /// 112 real commits differed by a few lines of edit script, and no git config
 /// reproduces it. Pinning histogram buys an exact parity assertion, at the cost
 /// of differing slightly from a user's own `git diff` when their git defaults to
-/// Myers. Both are valid diffs. See docs/contract.md.
+/// Myers. Both are valid diffs.
 const ALGORITHM: Algorithm = Algorithm::Histogram;
 
 /// Hunks, whole-file line counts, truncation flag, binary flag.

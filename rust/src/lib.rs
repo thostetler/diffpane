@@ -7,5 +7,6 @@ pub mod diff;
 pub mod model;
 pub mod report;
 pub mod scope;
+pub mod server;
 pub mod session;
 pub mod validate;

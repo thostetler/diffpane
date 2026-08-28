@@ -189,8 +189,21 @@ async fn host_review(
   Ok(ending)
 }
 
+/// gix cannot open a SHA-256 repository yet, and the error it raises names a
+/// config key rather than the limitation. Even once it can, `scope::EMPTY_TREE`
+/// is the SHA-1 hash, so this stays a real gap and not just a bad message.
+fn discover_repo() -> Result<gix::Repository> {
+  gix::discover(std::env::current_dir()?).map_err(|error| {
+    if error.to_string().contains("objectFormat=sha256") {
+      anyhow::anyhow!("diffpane cannot read SHA-256 repositories yet: {error}")
+    } else {
+      error.into()
+    }
+  })
+}
+
 pub async fn run(options: &Options) -> Result<i32> {
-  let repo = gix::discover(std::env::current_dir()?)?;
+  let repo = discover_repo()?;
   let Some(built) = build_session(&repo, options)? else {
     eprintln!("no changes to review");
     return Ok(0);

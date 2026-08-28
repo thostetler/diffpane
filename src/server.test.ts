@@ -7,7 +7,7 @@ import { after, before, test } from 'node:test';
 
 import { Session, writeJson } from './session.ts';
 import { buildServer, generateToken, listen } from './server.ts';
-import type { Comment, Meta, ReviewState } from './types.ts';
+import type { Comment, Meta, Review, ReviewState } from './types.ts';
 
 const TOKEN = generateToken();
 
@@ -30,6 +30,8 @@ const META: Meta = {
   totals: { files: 0, additions: 0, deletions: 0 },
 };
 
+const REVIEW: Review = { chapters: [{ id: 'c1', title: 'Cache layer', hunks: ['f0h0'] }] };
+
 const ANCHOR = { kind: 'line', file: 'a.ts', hunk: 'f0h0', side: 'new', line: 1 };
 
 before(async () => {
@@ -37,6 +39,7 @@ before(async () => {
   session = new Session(dir);
   writeJson(session.metaPath, META);
   writeJson(session.hunksPath, { files: [] });
+  writeJson(session.reviewPath, REVIEW);
   server = buildServer({
     session,
     token: TOKEN,
@@ -253,6 +256,24 @@ test('validates progress state', async () => {
     body: JSON.stringify({ chapter: 'c1', state: 'maybe' }),
   });
   assert.equal(bad.status, 400);
+});
+
+test('rejects progress for a chapter that is not in review.json', async () => {
+  const response = await api('/api/progress', {
+    method: 'PUT',
+    body: JSON.stringify({ chapter: 'c-nope', state: 'reviewed' }),
+  });
+  assert.equal(response.status, 400);
+  assert.equal(session.state().progress['c-nope'], undefined);
+});
+
+test('accepts progress for the synthetic unsorted chapter', async () => {
+  const response = await api('/api/progress', {
+    method: 'PUT',
+    body: JSON.stringify({ chapter: 'unsorted', state: 'reviewed' }),
+  });
+  assert.equal(response.status, 200);
+  assert.equal(session.state().progress['unsorted'], 'reviewed');
 });
 
 test('submitting persists the verdict and fires the callback once', async () => {

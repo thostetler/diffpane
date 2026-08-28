@@ -271,9 +271,16 @@ class RequestHandler {
     });
   }
 
+  /** `unsorted` is the synthetic trailing chapter the UI appends; see contract. */
+  private chapterIds(): Set<string> {
+    const review = this.options.session.review();
+    return new Set([...(review?.chapters ?? []).map((chapter) => chapter.id), 'unsorted']);
+  }
+
   private setProgress(body: Record<string, unknown>): { progress: ReviewState['progress'] } {
     const chapter = body['chapter'];
     if (typeof chapter !== 'string' || chapter === '') throw new ApiError('chapter is required');
+    if (!this.chapterIds().has(chapter)) throw new ApiError(`no such chapter: ${chapter}`);
     const value = validateProgressState(body['state']);
     return this.mutate((state) => {
       state.progress[chapter] = value;

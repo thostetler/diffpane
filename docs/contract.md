@@ -183,6 +183,9 @@ JSON in, JSON out, `Content-Type: application/json`. Errors return
 | POST | `/api/submit` | `{ overall? }` | `{ submitted: true, submitted_at }` |
 | GET | `/api/state` | — | `comments.json` contents (cheap poll) |
 
+`PUT /api/progress` only accepts a `chapter` that `review.json` declares, plus
+the synthetic `unsorted`; anything else is a 400.
+
 Every mutating call returns after the write has hit disk, so the UI can treat a
 2xx as durable. On any non-2xx the UI must surface the error inline and keep the
 user's text — never silently drop a comment.

@@ -6,3 +6,4 @@ pub mod classify;
 pub mod diff;
 pub mod model;
 pub mod scope;
+pub mod session;

@@ -11,6 +11,7 @@ import { buildJson, buildMarkdown, outcomeOf, type Outcome } from './report.ts';
 import { Session, emptyState, nowIso, slugify, writeJson } from './session.ts';
 import { buildServer, generateToken, listen } from './server.ts';
 import type { Meta, Review } from './types.ts';
+import { waitForSubmit } from './wait-for-submit.ts';
 
 const EXIT: Record<Outcome, number> = {
   approved: 0,
@@ -70,20 +71,6 @@ function installReview(
   writeJson(session.reviewPath, review);
 }
 
-/** Resolves when the review is submitted, the timeout fires, or the user quits. */
-function waitForSubmit(timeoutSeconds: number): { promise: Promise<void>; onSubmit: () => void } {
-  let onSubmit = (): void => undefined;
-  const promise = new Promise<void>((resolvePromise) => {
-    onSubmit = resolvePromise;
-    if (timeoutSeconds > 0) setTimeout(resolvePromise, timeoutSeconds * 1000).unref();
-    process.once('SIGINT', () => {
-      process.stderr.write('\n');
-      resolvePromise();
-    });
-  });
-  return { promise, onSubmit };
-}
-
 function emitReport(session: Session, options: Options): Outcome {
   const input = {
     meta: session.meta(),
@@ -107,8 +94,8 @@ async function run(options: Options): Promise<number> {
   }
 
   const token = generateToken();
-  const { promise, onSubmit } = waitForSubmit(options.timeoutSeconds);
-  const server = buildServer({ session: built.session, token, onSubmit });
+  const { promise, onSubmitStart, onSubmit } = waitForSubmit(options.timeoutSeconds);
+  const server = buildServer({ session: built.session, token, onSubmitStart, onSubmit });
   const port = await listen(server, options.port);
   const url = `http://127.0.0.1:${port}/?t=${token}`;
 
@@ -117,11 +104,13 @@ async function run(options: Options): Promise<number> {
   process.stderr.write(`review    ${url}\n`);
   if (options.shouldOpen) openBrowser(url);
 
-  await promise;
+  const ending = await promise;
   // Let the submit response finish leaving the socket before tearing down.
-  await new Promise((resolveTick) => {
-    setImmediate(resolveTick);
-  });
+  if (ending === 'submitted') {
+    await new Promise((resolveTick) => {
+      setImmediate(resolveTick);
+    });
+  }
   server.close();
   server.closeAllConnections();
   return EXIT[emitReport(built.session, options)];

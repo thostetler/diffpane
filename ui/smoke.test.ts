@@ -43,7 +43,12 @@ before(async () => {
   writeJson(session.metaPath, FIXTURE.meta);
   writeJson(session.hunksPath, FIXTURE.hunks);
   writeJson(session.reviewPath, FIXTURE.review);
-  server = buildServer({ session, token: TOKEN, onSubmit: () => undefined });
+  server = buildServer({
+    session,
+    token: TOKEN,
+    onSubmitStart: () => undefined,
+    onSubmit: () => undefined,
+  });
   url = `http://127.0.0.1:${await listen(server, 0)}/?t=${TOKEN}`;
   browser = await chromium.launch();
 });

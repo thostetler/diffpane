@@ -27,6 +27,8 @@ const CONTENT_TYPES: Record<string, string> = {
 export interface ServerOptions {
   session: Session;
   token: string;
+  /** Fires when a submit arrives, so a teardown can wait for its response. */
+  onSubmitStart: () => void;
   onSubmit: () => void;
 }
 
@@ -217,6 +219,7 @@ class RequestHandler {
       return ok(this.setOverall(await readRequestBody(request)));
     }
     if (method === 'POST' && path === '/api/submit') {
+      this.options.onSubmitStart();
       return {
         payload: this.submit(await readRequestBody(request)),
         status: 200,

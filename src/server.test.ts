@@ -16,6 +16,7 @@ let session: Session;
 let server: Server;
 let base: string;
 let submitCount = 0;
+let submitStartCount = 0;
 
 const META: Meta = {
   repo: 'demo',
@@ -43,6 +44,9 @@ before(async () => {
   server = buildServer({
     session,
     token: TOKEN,
+    onSubmitStart: () => {
+      submitStartCount += 1;
+    },
     onSubmit: () => {
       submitCount += 1;
     },
@@ -276,8 +280,9 @@ test('accepts progress for the synthetic unsorted chapter', async () => {
   assert.equal(session.state().progress['unsorted'], 'reviewed');
 });
 
-test('submitting persists the verdict and fires the callback once', async () => {
+test('submitting persists the verdict and fires the callbacks once', async () => {
   const before = submitCount;
+  const beforeStart = submitStartCount;
   const response = await api('/api/submit', {
     method: 'POST',
     body: JSON.stringify({ overall: { verdict: 'fix', body: 'one blocker' } }),
@@ -288,6 +293,8 @@ test('submitting persists the verdict and fires the callback once', async () => 
   assert.equal(state.overall.verdict, 'fix');
   assert.equal(state.overall.body, 'one blocker');
   assert.equal(submitCount, before + 1);
+  // Announced before the response, so a pending teardown can wait for it.
+  assert.equal(submitStartCount, beforeStart + 1);
 });
 
 test('404s on an unknown endpoint', async () => {
@@ -305,6 +312,7 @@ test('the submit response reaches the client even though onSubmit closes the ser
   const server2 = buildServer({
     session: session2,
     token: TOKEN,
+    onSubmitStart: () => undefined,
     onSubmit: () => {
       closed = true;
       server2.close();

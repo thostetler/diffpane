@@ -1,14 +1,8 @@
 {
   "name": "diffpane",
+  "private": true,
   "version": "0.1.0",
   "description": "Review a git diff in your browser, comment on the lines, hand the feedback back to your agent.",
-  "keywords": [
-    "diff",
-    "code-review",
-    "git",
-    "agent",
-    "cli"
-  ],
   "license": "MIT",
   "author": "Tim Hostetler",
   "repository": {
@@ -18,25 +12,9 @@
   "homepage": "https://github.com/thostetler/diffpane#readme",
   "bugs": "https://github.com/thostetler/diffpane/issues",
   "type": "module",
-  "bin": {
-    "diffpane": "dist/cli.js"
-  },
-  "files": [
-    "dist",
-    "ui",
-    "skills",
-    "README.md",
-    "LICENSE"
-  ],
-  "engines": {
-    "node": ">=22.6"
-  },
   "scripts": {
-    "build": "tsc",
-    "typecheck": "tsc --noEmit && tsc -p tsconfig.test.json && tsc -p tsconfig.ui.json",
-    "test": "node --experimental-strip-types --test src/*.test.ts",
-    "test:ui": "node --experimental-strip-types --test ui/*.test.ts",
-    "prepare": "npm run build"
+    "typecheck": "tsc",
+    "test:ui": "node --experimental-strip-types --test ui/*.test.ts"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

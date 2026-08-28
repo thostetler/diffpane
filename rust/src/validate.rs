@@ -1,4 +1,4 @@
-//! Boundary validation for the HTTP API, mirroring `src/validate.ts`.
+//! Boundary validation for the HTTP API.
 //!
 //! Serde would reject most of this on its own, but regression #9 is about the
 //! *messages and statuses* the UI sees, so the checks stay hand-rolled and the

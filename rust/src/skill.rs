@@ -1,4 +1,4 @@
-//! Installing the Claude Code skill, ported from `src/install-skill.ts`.
+//! Installing the Claude Code skill.
 //!
 //! The skill is compiled in rather than read from a sibling directory: the
 //! Rust build ships as a single binary, so a file lookup relative to the

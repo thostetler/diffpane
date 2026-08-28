@@ -1,4 +1,4 @@
-//! Argument parsing, ported from `src/args.ts`.
+//! Argument parsing.
 //!
 //! Hand-rolled rather than clap: `USAGE` is user-facing text that the skill
 //! quotes, and `--help` output is part of the CLI surface `docs/contract.md`

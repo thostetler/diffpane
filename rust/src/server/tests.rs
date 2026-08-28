@@ -62,9 +62,9 @@ struct Harness {
 }
 
 impl Harness {
-  /// Boots the real server on an ephemeral port over a temp session dir, the
-  /// way `src/server.test.ts` does. `seed_review` mirrors the fixture that has
-  /// a `review.json`, which the progress cases need a real chapter from.
+  /// Boots the real server on an ephemeral port over a temp session dir.
+  /// `seed_review` mirrors the fixture that has a `review.json`, which the
+  /// progress cases need a real chapter from.
   async fn start(seed_review: bool) -> Self {
     let temp = tempfile::tempdir().expect("temp dir");
     let session = Session::new(temp.path().to_path_buf());

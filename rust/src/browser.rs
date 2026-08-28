@@ -1,4 +1,4 @@
-//! Opening the review in a browser, ported from `src/open-browser.ts`.
+//! Opening the review in a browser.
 
 use std::process::{Command, Stdio};
 

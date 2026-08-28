@@ -1,4 +1,4 @@
-//! The command's own logic, ported from `src/cli.ts`.
+//! The command's own logic.
 //!
 //! Everything here is a function `main` calls: printing and process exit live
 //! in the binary, so this stays testable.

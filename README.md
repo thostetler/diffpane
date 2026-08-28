@@ -13,13 +13,16 @@ Nothing leaves your machine. No account, no service, no runtime dependencies.
 
 ## Install
 
-Not on npm yet — install from source:
+Not packaged yet — build it from source:
 
 ```sh
-npm install -g github:thostetler/diffpane
+git clone https://github.com/thostetler/diffpane
+cargo install --path diffpane/rust
 ```
 
-Requires Node 22.6+ and `git`.
+Requires Rust 1.92+ and `git`. Prebuilt binaries and `npx diffpane` are the
+next piece of work; the binary is self-contained, so there is nothing to
+install alongside it.
 
 ## Use
 
@@ -178,18 +181,29 @@ Details in
 ## Development
 
 ```sh
-pnpm install
-pnpm test          # node:test, no test framework
-pnpm typecheck
-pnpm build
-
-pnpm exec playwright install chromium
-pnpm test:ui       # browser coverage for ui/, against a real server
+cd rust
+cargo test
+cargo clippy --all-targets -- -D warnings
+cargo fmt --check
 ```
 
-Zero runtime dependencies. `src/` is the CLI and server; `ui/` is vanilla
-HTML/CSS/JS with no build step. `docs/contract.md` is the frozen interface
-between them — change it there first.
+The browser suite is the one thing still on Node: it drives a real Chromium
+against the built binary.
+
+```sh
+pnpm install
+pnpm exec playwright install chromium
+pnpm test:ui
+pnpm typecheck
+```
+
+`rust/` is the CLI and server; `ui/` is vanilla HTML/CSS/JS with no build step,
+compiled into the binary. `docs/contract.md` is the frozen interface between
+them — change it there first. `DIFFPANE_UI_DIR=ui` serves `ui/` from disk so
+UI edits do not need a rebuild.
+
+`spike/parity.sh check-golden` asserts the diff output still matches
+`spike/golden/`, which is what the TypeScript's parity run left behind.
 
 Open the UI against fixture data without a repo:
 

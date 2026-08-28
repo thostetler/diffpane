@@ -1,4 +1,4 @@
-//! Waiting for the human, ported from `src/wait-for-submit.ts`.
+//! Waiting for the human.
 //!
 //! Three ways a review ends, and the caller needs to know which: the report is
 //! written either way, but only a submitted review can be approved (a timeout

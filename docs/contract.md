@@ -1,13 +1,14 @@
 # diffpane — data & API contract
 
-Frozen interface between the Node backend (`src/`) and the browser UI (`ui/`).
+Frozen interface between the Rust backend (`rust/`) and the browser UI (`ui/`).
 Neither side may change a shape here without updating this file.
 
 Backend owns: diff parsing, JSON persistence, HTTP serving.
 UI owns: everything rendered in the browser.
 
-The JSON wire format is snake_case throughout, including where the TypeScript
-that produces it is not.
+The JSON wire format is snake_case throughout. It was set by a TypeScript
+backend that has since been replaced; the format outlived it, which is the
+point of this file.
 
 ## Runtime layout
 
@@ -124,9 +125,11 @@ regardless of the reader's git config.
 - **Type change to a submodule.** Rendered as the `Subproject commit` side only;
   git shows both sides.
 
-`spike/parity.sh` asserts byte-equality against the TypeScript pipeline (which
-shells out to real git) everywhere except the three commits listed in its
-allow-list, which are the three cases above.
+These were established by `spike/parity.sh` while the TypeScript backend — which
+shelled out to real git — was still here to compare against: byte-equal
+everywhere except the three commits above, over 469 commits of a real repo.
+What survives that harness is `check-golden`, which asserts the fixture matrix
+still produces the output that parity run signed off on.
 
 ## review.json
 

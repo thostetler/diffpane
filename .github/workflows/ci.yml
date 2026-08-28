@@ -6,22 +6,6 @@ on:
   pull_request:
 
 jobs:
-  check:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 10
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm typecheck
-      - run: pnpm test
-      - run: pnpm build
-
   rust:
     runs-on: ubuntu-latest
     defaults:
@@ -39,27 +23,26 @@ jobs:
       - run: cargo clippy --all-targets -- -D warnings
       - run: cargo test
 
-  # The port's actual proof: the Rust diff layer's output, byte for byte
-  # against the TypeScript pipeline shelling out to real git. `check-golden`
-  # is the half that outlives the TypeScript's deletion.
+  # What the TypeScript's parity run signed off on, frozen: the diff layer's
+  # output over the fixture matrix, byte for byte against `spike/golden/`.
   parity:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: rust
-      - run: ./spike/parity.sh fixtures
       - run: ./spike/parity.sh check-golden
 
   ui:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust
       - uses: pnpm/action-setup@v4
         with:
           version: 10
@@ -68,5 +51,6 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test:ui

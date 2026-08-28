@@ -1,9 +1,9 @@
 //! The local HTTP server: the browser UI plus the JSON API it drives.
 //!
-//! Ports `src/server.ts`. The security posture is `docs/contract.md`'s and is
-//! not negotiable: loopback-literal `Host`, the page gated on `?t=`, `/api/*`
-//! gated on the `X-Diffpane-Token` header *only* (a cookie there would hand CSRF
-//! straight back), and `application/json` required on mutations.
+//! The security posture is `docs/contract.md`'s and is not negotiable:
+//! loopback-literal `Host`, the page gated on `?t=`, `/api/*` gated on the
+//! `X-Diffpane-Token` header *only* (a cookie there would hand CSRF straight
+//! back), and `application/json` required on mutations.
 //!
 //! Regression #7 — the submit response must flush before the process tears the
 //! server down — is handled structurally here: a submit only signals on

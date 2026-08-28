@@ -111,15 +111,15 @@ test('rejects a token supplied only as a query parameter on the API', async () =
   assert.equal((await fetch(`${base}/api/review?t=${TOKEN}`)).status, 403);
 });
 
-test('rejects requests with a non-loopback Host header', async () => {
-  // Guards against DNS rebinding. fetch() forbids setting Host, so go raw.
-  const status = await new Promise<number>((resolvePromise, reject) => {
+/** fetch() forbids setting Host, so Host-header cases go through raw http. */
+function statusWithHost(host: string): Promise<number> {
+  return new Promise<number>((resolvePromise, reject) => {
     const request = httpRequest(
       {
         host: '127.0.0.1',
         port: Number(new URL(base).port),
         path: '/api/review',
-        headers: { 'X-Diffpane-Token': TOKEN, Host: 'evil.example.com' },
+        headers: { 'X-Diffpane-Token': TOKEN, Host: host },
       },
       (response) => {
         response.resume();
@@ -129,7 +129,23 @@ test('rejects requests with a non-loopback Host header', async () => {
     request.on('error', reject);
     request.end();
   });
-  assert.equal(status, 403);
+}
+
+test('rejects requests with a non-loopback Host header', async () => {
+  // Guards against DNS rebinding.
+  assert.equal(await statusWithHost('evil.example.com'), 403);
+});
+
+test('rejects a Host of localhost, which is a name and not a literal', async () => {
+  assert.equal(await statusWithHost('localhost'), 403);
+  assert.equal(await statusWithHost(`localhost:${new URL(base).port}`), 403);
+});
+
+test('accepts loopback literals with and without a port or brackets', async () => {
+  assert.equal(await statusWithHost('127.0.0.1'), 200);
+  assert.equal(await statusWithHost(`127.0.0.1:${new URL(base).port}`), 200);
+  assert.equal(await statusWithHost('::1'), 200);
+  assert.equal(await statusWithHost(`[::1]:${new URL(base).port}`), 200);
 });
 
 test('rejects mutations that are not JSON', async () => {

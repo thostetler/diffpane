@@ -50,11 +50,26 @@ function safeEqual(a: string, b: string): boolean {
   return left.length === right.length && timingSafeEqual(left, right);
 }
 
-/** Rejects DNS-rebinding: the browser must be talking to a loopback literal. */
+/** Strips the port, tolerating `[::1]:8080` and a bare unbracketed `::1`. */
+function hostName(host: string): string {
+  if (host.startsWith('[')) {
+    const end = host.indexOf(']');
+    return end === -1 ? '' : host.slice(1, end);
+  }
+  // An unbracketed IPv6 literal cannot carry a port, so there is none to strip.
+  if (host.indexOf(':') !== host.lastIndexOf(':')) return host;
+  return host.replace(/:\d+$/, '');
+}
+
+/**
+ * Rejects DNS-rebinding: the browser must be talking to a loopback literal.
+ * `localhost` is a name, and docs/contract.md says literal — a resolver that
+ * hands back something else is precisely the attack.
+ */
 function isLoopbackHost(host: string | undefined): boolean {
   if (host === undefined) return false;
-  const name = host.replace(/:\d+$/, '').replace(/^\[|\]$/g, '');
-  return name === '127.0.0.1' || name === 'localhost' || name === '::1';
+  const name = hostName(host);
+  return name === '127.0.0.1' || name === '::1';
 }
 
 /**

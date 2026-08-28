@@ -1,0 +1,93 @@
+{
+  "files": [
+    {
+      "additions": 2,
+      "binary": false,
+      "deletions": 1,
+      "hunks": [
+        {
+          "additions": 2,
+          "deletions": 1,
+          "header": "@@ -1,7 +1,8 @@",
+          "id": "f0h0",
+          "lines": [
+            {
+              "i": 0,
+              "new": 1,
+              "old": 1,
+              "text": "alpha",
+              "type": "context"
+            },
+            {
+              "i": 1,
+              "new": null,
+              "old": 2,
+              "text": "bravo",
+              "type": "del"
+            },
+            {
+              "i": 2,
+              "new": 2,
+              "old": null,
+              "text": "bravo modified",
+              "type": "add"
+            },
+            {
+              "i": 3,
+              "new": 3,
+              "old": 3,
+              "text": "charlie",
+              "type": "context"
+            },
+            {
+              "i": 4,
+              "new": 4,
+              "old": 4,
+              "text": "delta",
+              "type": "context"
+            },
+            {
+              "i": 5,
+              "new": 5,
+              "old": 5,
+              "text": "echo",
+              "type": "context"
+            },
+            {
+              "i": 6,
+              "new": 6,
+              "old": 6,
+              "text": "foxtrot",
+              "type": "context"
+            },
+            {
+              "i": 7,
+              "new": 7,
+              "old": 7,
+              "text": "golf",
+              "type": "context"
+            },
+            {
+              "i": 8,
+              "new": 8,
+              "old": null,
+              "text": "hotel",
+              "type": "add"
+            }
+          ],
+          "new_count": 8,
+          "new_start": 1,
+          "old_count": 7,
+          "old_start": 1
+        }
+      ],
+      "id": "f0",
+      "language": null,
+      "noise": false,
+      "old_path": "plain.txt",
+      "path": "plain.txt",
+      "status": "modified",
+      "truncated": false
+    }
+  ]
+}

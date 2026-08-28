@@ -1,0 +1,749 @@
+{
+  "files": [
+    {
+      "additions": 3,
+      "binary": false,
+      "deletions": 0,
+      "hunks": [
+        {
+          "additions": 3,
+          "deletions": 0,
+          "header": "@@ -0,0 +1,3 @@",
+          "id": "f0h0",
+          "lines": [
+            {
+              "i": 0,
+              "new": 1,
+              "old": null,
+              "text": "*.crlf text eol=crlf",
+              "type": "add"
+            },
+            {
+              "i": 1,
+              "new": 2,
+              "old": null,
+              "text": "*.flt filter=spike",
+              "type": "add"
+            },
+            {
+              "i": 2,
+              "new": 3,
+              "old": null,
+              "text": "*.bin binary",
+              "type": "add"
+            }
+          ],
+          "new_count": 3,
+          "new_start": 1,
+          "old_count": 0,
+          "old_start": 0
+        }
+      ],
+      "id": "f0",
+      "language": null,
+      "noise": false,
+      "old_path": ".gitattributes",
+      "path": ".gitattributes",
+      "status": "added",
+      "truncated": false
+    },
+    {
+      "additions": 6,
+      "binary": false,
+      "deletions": 0,
+      "hunks": [
+        {
+          "additions": 6,
+          "deletions": 0,
+          "header": "@@ -0,0 +1,6 @@",
+          "id": "f1h0",
+          "lines": [
+            {
+              "i": 0,
+              "new": 1,
+              "old": null,
+              "text": "keep this line",
+              "type": "add"
+            },
+            {
+              "i": 1,
+              "new": 2,
+              "old": null,
+              "text": "alpha alpha alpha",
+              "type": "add"
+            },
+            {
+              "i": 2,
+              "new": 3,
+              "old": null,
+              "text": "bravo bravo bravo",
+              "type": "add"
+            },
+            {
+              "i": 3,
+              "new": 4,
+              "old": null,
+              "text": "charlie charlie charlie",
+              "type": "add"
+            },
+            {
+              "i": 4,
+              "new": 5,
+              "old": null,
+              "text": "delta delta delta",
+              "type": "add"
+            },
+            {
+              "i": 5,
+              "new": 6,
+              "old": null,
+              "text": "echo echo echo",
+              "type": "add"
+            }
+          ],
+          "new_count": 6,
+          "new_start": 1,
+          "old_count": 0,
+          "old_start": 0
+        }
+      ],
+      "id": "f1",
+      "language": null,
+      "noise": false,
+      "old_path": "barely-similar.txt",
+      "path": "barely-similar.txt",
+      "status": "added",
+      "truncated": false
+    },
+    {
+      "additions": 4,
+      "binary": false,
+      "deletions": 0,
+      "hunks": [
+        {
+          "additions": 4,
+          "deletions": 0,
+          "header": "@@ -0,0 +1,4 @@",
+          "id": "f2h0",
+          "lines": [
+            {
+              "i": 0,
+              "new": 1,
+              "old": null,
+              "text": "first",
+              "type": "add"
+            },
+            {
+              "i": 1,
+              "new": 2,
+              "old": null,
+              "text": "second",
+              "type": "add"
+            },
+            {
+              "i": 2,
+              "new": 3,
+              "old": null,
+              "text": "third",
+              "type": "add"
+            },
+            {
+              "i": 3,
+              "new": 4,
+              "old": null,
+              "text": "fourth",
+              "type": "add"
+            }
+          ],
+          "new_count": 4,
+          "new_start": 1,
+          "old_count": 0,
+          "old_start": 0
+        }
+      ],
+      "id": "f2",
+      "language": null,
+      "noise": false,
+      "old_path": "crlf.crlf",
+      "path": "crlf.crlf",
+      "status": "added",
+      "truncated": false
+    },
+    {
+      "additions": 2,
+      "binary": false,
+      "deletions": 0,
+      "hunks": [
+        {
+          "additions": 2,
+          "deletions": 0,
+          "header": "@@ -0,0 +1,2 @@",
+          "id": "f3h0",
+          "lines": [
+            {
+              "i": 0,
+              "new": 1,
+              "old": null,
+              "text": "this file gets deleted",
+              "type": "add"
+            },
+            {
+              "i": 1,
+              "new": 2,
+              "old": null,
+              "text": "second line",
+              "type": "add"
+            }
+          ],
+          "new_count": 2,
+          "new_start": 1,
+          "old_count": 0,
+          "old_start": 0
+        }
+      ],
+      "id": "f3",
+      "language": null,
+      "noise": false,
+      "old_path": "doomed.txt",
+      "path": "doomed.txt",
+      "status": "added",
+      "truncated": false
+    },
+    {
+      "additions": 2,
+      "binary": false,
+      "deletions": 0,
+      "hunks": [
+        {
+          "additions": 2,
+          "deletions": 0,
+          "header": "@@ -0,0 +1,2 @@",
+          "id": "f4h0",
+          "lines": [
+            {
+              "i": 0,
+              "new": 1,
+              "old": null,
+              "text": "#!/bin/sh",
+              "type": "add"
+            },
+            {
+              "i": 1,
+              "new": 2,
+              "old": null,
+              "text": "echo hello",
+              "type": "add"
+            }
+          ],
+          "new_count": 2,
+          "new_start": 1,
+          "old_count": 0,
+          "old_start": 0
+        }
+      ],
+      "id": "f4",
+      "language": "shell",
+      "noise": false,
+      "old_path": "exec.sh",
+      "path": "exec.sh",
+      "status": "added",
+      "truncated": false
+    },
+    {
+      "additions": 2,
+      "binary": false,
+      "deletions": 0,
+      "hunks": [
+        {
+          "additions": 2,
+          "deletions": 0,
+          "header": "@@ -0,0 +1,2 @@",
+          "id": "f5h0",
+          "lines": [
+            {
+              "i": 0,
+              "new": 1,
+              "old": null,
+              "text": "token = REDACTED",
+              "type": "add"
+            },
+            {
+              "i": 1,
+              "new": 2,
+              "old": null,
+              "text": "untouched line",
+              "type": "add"
+            }
+          ],
+          "new_count": 2,
+          "new_start": 1,
+          "old_count": 0,
+          "old_start": 0
+        }
+      ],
+      "id": "f5",
+      "language": null,
+      "noise": false,
+      "old_path": "filtered.flt",
+      "path": "filtered.flt",
+      "status": "added",
+      "truncated": false
+    },
+    {
+      "additions": 0,
+      "binary": true,
+      "deletions": 0,
+      "hunks": [],
+      "id": "f6",
+      "language": null,
+      "noise": false,
+      "old_path": "logo.bin",
+      "path": "logo.bin",
+      "status": "added",
+      "truncated": false
+    },
+    {
+      "additions": 10,
+      "binary": false,
+      "deletions": 0,
+      "hunks": [
+        {
+          "additions": 10,
+          "deletions": 0,
+          "header": "@@ -0,0 +1,10 @@",
+          "id": "f7h0",
+          "lines": [
+            {
+              "i": 0,
+              "new": 1,
+              "old": null,
+              "text": "uno",
+              "type": "add"
+            },
+            {
+              "i": 1,
+              "new": 2,
+              "old": null,
+              "text": "dos",
+              "type": "add"
+            },
+            {
+              "i": 2,
+              "new": 3,
+              "old": null,
+              "text": "tres",
+              "type": "add"
+            },
+            {
+              "i": 3,
+              "new": 4,
+              "old": null,
+              "text": "cuatro",
+              "type": "add"
+            },
+            {
+              "i": 4,
+              "new": 5,
+              "old": null,
+              "text": "cinco",
+              "type": "add"
+            },
+            {
+              "i": 5,
+              "new": 6,
+              "old": null,
+              "text": "seis",
+              "type": "add"
+            },
+            {
+              "i": 6,
+              "new": 7,
+              "old": null,
+              "text": "siete",
+              "type": "add"
+            },
+            {
+              "i": 7,
+              "new": 8,
+              "old": null,
+              "text": "ocho",
+              "type": "add"
+            },
+            {
+              "i": 8,
+              "new": 9,
+              "old": null,
+              "text": "nueve",
+              "type": "add"
+            },
+            {
+              "i": 9,
+              "new": 10,
+              "old": null,
+              "text": "diez",
+              "type": "add"
+            }
+          ],
+          "new_count": 10,
+          "new_start": 1,
+          "old_count": 0,
+          "old_start": 0
+        }
+      ],
+      "id": "f7",
+      "language": null,
+      "noise": false,
+      "old_path": "moved-and-edited.txt",
+      "path": "moved-and-edited.txt",
+      "status": "added",
+      "truncated": false
+    },
+    {
+      "additions": 10,
+      "binary": false,
+      "deletions": 0,
+      "hunks": [
+        {
+          "additions": 10,
+          "deletions": 0,
+          "header": "@@ -0,0 +1,10 @@",
+          "id": "f8h0",
+          "lines": [
+            {
+              "i": 0,
+              "new": 1,
+              "old": null,
+              "text": "one",
+              "type": "add"
+            },
+            {
+              "i": 1,
+              "new": 2,
+              "old": null,
+              "text": "two",
+              "type": "add"
+            },
+            {
+              "i": 2,
+              "new": 3,
+              "old": null,
+              "text": "three",
+              "type": "add"
+            },
+            {
+              "i": 3,
+              "new": 4,
+              "old": null,
+              "text": "four",
+              "type": "add"
+            },
+            {
+              "i": 4,
+              "new": 5,
+              "old": null,
+              "text": "five",
+              "type": "add"
+            },
+            {
+              "i": 5,
+              "new": 6,
+              "old": null,
+              "text": "six",
+              "type": "add"
+            },
+            {
+              "i": 6,
+              "new": 7,
+              "old": null,
+              "text": "seven",
+              "type": "add"
+            },
+            {
+              "i": 7,
+              "new": 8,
+              "old": null,
+              "text": "eight",
+              "type": "add"
+            },
+            {
+              "i": 8,
+              "new": 9,
+              "old": null,
+              "text": "nine",
+              "type": "add"
+            },
+            {
+              "i": 9,
+              "new": 10,
+              "old": null,
+              "text": "ten",
+              "type": "add"
+            }
+          ],
+          "new_count": 10,
+          "new_start": 1,
+          "old_count": 0,
+          "old_start": 0
+        }
+      ],
+      "id": "f8",
+      "language": null,
+      "noise": false,
+      "old_path": "moved.txt",
+      "path": "moved.txt",
+      "status": "added",
+      "truncated": false
+    },
+    {
+      "additions": 7,
+      "binary": false,
+      "deletions": 0,
+      "hunks": [
+        {
+          "additions": 7,
+          "deletions": 0,
+          "header": "@@ -0,0 +1,7 @@",
+          "id": "f9h0",
+          "lines": [
+            {
+              "i": 0,
+              "new": 1,
+              "old": null,
+              "text": "alpha",
+              "type": "add"
+            },
+            {
+              "i": 1,
+              "new": 2,
+              "old": null,
+              "text": "bravo",
+              "type": "add"
+            },
+            {
+              "i": 2,
+              "new": 3,
+              "old": null,
+              "text": "charlie",
+              "type": "add"
+            },
+            {
+              "i": 3,
+              "new": 4,
+              "old": null,
+              "text": "delta",
+              "type": "add"
+            },
+            {
+              "i": 4,
+              "new": 5,
+              "old": null,
+              "text": "echo",
+              "type": "add"
+            },
+            {
+              "i": 5,
+              "new": 6,
+              "old": null,
+              "text": "foxtrot",
+              "type": "add"
+            },
+            {
+              "i": 6,
+              "new": 7,
+              "old": null,
+              "text": "golf",
+              "type": "add"
+            }
+          ],
+          "new_count": 7,
+          "new_start": 1,
+          "old_count": 0,
+          "old_start": 0
+        }
+      ],
+      "id": "f9",
+      "language": null,
+      "noise": false,
+      "old_path": "plain.txt",
+      "path": "plain.txt",
+      "status": "added",
+      "truncated": false
+    },
+    {
+      "additions": 7,
+      "binary": false,
+      "deletions": 0,
+      "hunks": [
+        {
+          "additions": 7,
+          "deletions": 0,
+          "header": "@@ -0,0 +1,7 @@",
+          "id": "f10h0",
+          "lines": [
+            {
+              "i": 0,
+              "new": 1,
+              "old": null,
+              "text": "lockfileVersion: '9.0'",
+              "type": "add"
+            },
+            {
+              "i": 1,
+              "new": 2,
+              "old": null,
+              "text": "importers:",
+              "type": "add"
+            },
+            {
+              "i": 2,
+              "new": 3,
+              "old": null,
+              "text": "  .:",
+              "type": "add"
+            },
+            {
+              "i": 3,
+              "new": 4,
+              "old": null,
+              "text": "    dependencies:",
+              "type": "add"
+            },
+            {
+              "i": 4,
+              "new": 5,
+              "old": null,
+              "text": "      left-pad:",
+              "type": "add"
+            },
+            {
+              "i": 5,
+              "new": 6,
+              "old": null,
+              "text": "        specifier: ^1.0.0",
+              "type": "add"
+            },
+            {
+              "i": 6,
+              "new": 7,
+              "old": null,
+              "text": "        version: 1.3.0",
+              "type": "add"
+            }
+          ],
+          "new_count": 7,
+          "new_start": 1,
+          "old_count": 0,
+          "old_start": 0
+        }
+      ],
+      "id": "f10",
+      "language": "yaml",
+      "noise": true,
+      "old_path": "pnpm-lock.yaml",
+      "path": "pnpm-lock.yaml",
+      "status": "added",
+      "truncated": false
+    },
+    {
+      "additions": 5,
+      "binary": false,
+      "deletions": 0,
+      "hunks": [
+        {
+          "additions": 5,
+          "deletions": 0,
+          "header": "@@ -0,0 +1,5 @@",
+          "id": "f11h0",
+          "lines": [
+            {
+              "i": 0,
+              "new": 1,
+              "old": null,
+              "text": "-- lookup by identifier",
+              "type": "add"
+            },
+            {
+              "i": 1,
+              "new": 2,
+              "old": null,
+              "text": "SELECT * FROM docs WHERE id = 1;",
+              "type": "add"
+            },
+            {
+              "i": 2,
+              "new": 3,
+              "old": null,
+              "text": "-- legacy path, unused",
+              "type": "add"
+            },
+            {
+              "i": 3,
+              "new": 4,
+              "old": null,
+              "text": "SELECT * FROM docs_v1 WHERE id = 1;",
+              "type": "add"
+            },
+            {
+              "i": 4,
+              "new": 5,
+              "old": null,
+              "text": "SELECT count(*) FROM docs;",
+              "type": "add"
+            }
+          ],
+          "new_count": 5,
+          "new_start": 1,
+          "old_count": 0,
+          "old_start": 0
+        }
+      ],
+      "id": "f11",
+      "language": "sql",
+      "noise": false,
+      "old_path": "queries.sql",
+      "path": "queries.sql",
+      "status": "added",
+      "truncated": false
+    },
+    {
+      "additions": 2,
+      "binary": false,
+      "deletions": 0,
+      "hunks": [
+        {
+          "additions": 2,
+          "deletions": 0,
+          "header": "@@ -0,0 +1,2 @@",
+          "id": "f12h0",
+          "lines": [
+            {
+              "i": 0,
+              "new": 1,
+              "old": null,
+              "text": "colon in the path",
+              "type": "add"
+            },
+            {
+              "i": 1,
+              "new": 2,
+              "old": null,
+              "text": "line two",
+              "type": "add"
+            }
+          ],
+          "new_count": 2,
+          "new_start": 1,
+          "old_count": 0,
+          "old_start": 0
+        }
+      ],
+      "id": "f12",
+      "language": null,
+      "noise": false,
+      "old_path": "src/weird:name.txt",
+      "path": "src/weird:name.txt",
+      "status": "added",
+      "truncated": false
+    }
+  ]
+}

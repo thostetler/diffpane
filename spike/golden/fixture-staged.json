@@ -1,0 +1,768 @@
+{
+  "files": [
+    {
+      "additions": 2,
+      "binary": false,
+      "deletions": 0,
+      "hunks": [
+        {
+          "additions": 2,
+          "deletions": 0,
+          "header": "@@ -0,0 +1,2 @@",
+          "id": "f0h0",
+          "lines": [
+            {
+              "i": 0,
+              "new": 1,
+              "old": null,
+              "text": "brand new file",
+              "type": "add"
+            },
+            {
+              "i": 1,
+              "new": 2,
+              "old": null,
+              "text": "with two lines",
+              "type": "add"
+            }
+          ],
+          "new_count": 2,
+          "new_start": 1,
+          "old_count": 0,
+          "old_start": 0
+        }
+      ],
+      "id": "f0",
+      "language": null,
+      "noise": false,
+      "old_path": "added.txt",
+      "path": "added.txt",
+      "status": "added",
+      "truncated": false
+    },
+    {
+      "additions": 0,
+      "binary": false,
+      "deletions": 6,
+      "hunks": [
+        {
+          "additions": 0,
+          "deletions": 6,
+          "header": "@@ -1,6 +0,0 @@",
+          "id": "f1h0",
+          "lines": [
+            {
+              "i": 0,
+              "new": null,
+              "old": 1,
+              "text": "keep this line",
+              "type": "del"
+            },
+            {
+              "i": 1,
+              "new": null,
+              "old": 2,
+              "text": "alpha alpha alpha",
+              "type": "del"
+            },
+            {
+              "i": 2,
+              "new": null,
+              "old": 3,
+              "text": "bravo bravo bravo",
+              "type": "del"
+            },
+            {
+              "i": 3,
+              "new": null,
+              "old": 4,
+              "text": "charlie charlie charlie",
+              "type": "del"
+            },
+            {
+              "i": 4,
+              "new": null,
+              "old": 5,
+              "text": "delta delta delta",
+              "type": "del"
+            },
+            {
+              "i": 5,
+              "new": null,
+              "old": 6,
+              "text": "echo echo echo",
+              "type": "del"
+            }
+          ],
+          "new_count": 0,
+          "new_start": 0,
+          "old_count": 6,
+          "old_start": 1
+        }
+      ],
+      "id": "f1",
+      "language": null,
+      "noise": false,
+      "old_path": "barely-similar.txt",
+      "path": "barely-similar.txt",
+      "status": "deleted",
+      "truncated": false
+    },
+    {
+      "additions": 2,
+      "binary": false,
+      "deletions": 1,
+      "hunks": [
+        {
+          "additions": 2,
+          "deletions": 1,
+          "header": "@@ -1,4 +1,5 @@",
+          "id": "f2h0",
+          "lines": [
+            {
+              "i": 0,
+              "new": 1,
+              "old": 1,
+              "text": "first",
+              "type": "context"
+            },
+            {
+              "i": 1,
+              "new": null,
+              "old": 2,
+              "text": "second",
+              "type": "del"
+            },
+            {
+              "i": 2,
+              "new": 2,
+              "old": null,
+              "text": "second CHANGED",
+              "type": "add"
+            },
+            {
+              "i": 3,
+              "new": 3,
+              "old": 3,
+              "text": "third",
+              "type": "context"
+            },
+            {
+              "i": 4,
+              "new": 4,
+              "old": 4,
+              "text": "fourth",
+              "type": "context"
+            },
+            {
+              "i": 5,
+              "new": 5,
+              "old": null,
+              "text": "fifth",
+              "type": "add"
+            }
+          ],
+          "new_count": 5,
+          "new_start": 1,
+          "old_count": 4,
+          "old_start": 1
+        }
+      ],
+      "id": "f2",
+      "language": null,
+      "noise": false,
+      "old_path": "crlf.crlf",
+      "path": "crlf.crlf",
+      "status": "modified",
+      "truncated": false
+    },
+    {
+      "additions": 0,
+      "binary": false,
+      "deletions": 2,
+      "hunks": [
+        {
+          "additions": 0,
+          "deletions": 2,
+          "header": "@@ -1,2 +0,0 @@",
+          "id": "f3h0",
+          "lines": [
+            {
+              "i": 0,
+              "new": null,
+              "old": 1,
+              "text": "this file gets deleted",
+              "type": "del"
+            },
+            {
+              "i": 1,
+              "new": null,
+              "old": 2,
+              "text": "second line",
+              "type": "del"
+            }
+          ],
+          "new_count": 0,
+          "new_start": 0,
+          "old_count": 2,
+          "old_start": 1
+        }
+      ],
+      "id": "f3",
+      "language": null,
+      "noise": false,
+      "old_path": "doomed.txt",
+      "path": "doomed.txt",
+      "status": "deleted",
+      "truncated": false
+    },
+    {
+      "additions": 0,
+      "binary": false,
+      "deletions": 0,
+      "hunks": [],
+      "id": "f4",
+      "language": "shell",
+      "noise": false,
+      "old_path": "exec.sh",
+      "path": "exec.sh",
+      "status": "modified",
+      "truncated": false
+    },
+    {
+      "additions": 1,
+      "binary": false,
+      "deletions": 0,
+      "hunks": [
+        {
+          "additions": 1,
+          "deletions": 0,
+          "header": "@@ -1,2 +1,3 @@",
+          "id": "f5h0",
+          "lines": [
+            {
+              "i": 0,
+              "new": 1,
+              "old": 1,
+              "text": "token = REDACTED",
+              "type": "context"
+            },
+            {
+              "i": 1,
+              "new": 2,
+              "old": 2,
+              "text": "untouched line",
+              "type": "context"
+            },
+            {
+              "i": 2,
+              "new": 3,
+              "old": null,
+              "text": "appended line",
+              "type": "add"
+            }
+          ],
+          "new_count": 3,
+          "new_start": 1,
+          "old_count": 2,
+          "old_start": 1
+        }
+      ],
+      "id": "f5",
+      "language": null,
+      "noise": false,
+      "old_path": "filtered.flt",
+      "path": "filtered.flt",
+      "status": "modified",
+      "truncated": false
+    },
+    {
+      "additions": 0,
+      "binary": true,
+      "deletions": 0,
+      "hunks": [],
+      "id": "f6",
+      "language": null,
+      "noise": false,
+      "old_path": "logo.bin",
+      "path": "logo.bin",
+      "status": "modified",
+      "truncated": false
+    },
+    {
+      "additions": 2,
+      "binary": false,
+      "deletions": 1,
+      "hunks": [
+        {
+          "additions": 2,
+          "deletions": 1,
+          "header": "@@ -1,7 +1,8 @@",
+          "id": "f7h0",
+          "lines": [
+            {
+              "i": 0,
+              "new": 1,
+              "old": 1,
+              "text": "alpha",
+              "type": "context"
+            },
+            {
+              "i": 1,
+              "new": null,
+              "old": 2,
+              "text": "bravo",
+              "type": "del"
+            },
+            {
+              "i": 2,
+              "new": 2,
+              "old": null,
+              "text": "bravo modified",
+              "type": "add"
+            },
+            {
+              "i": 3,
+              "new": 3,
+              "old": 3,
+              "text": "charlie",
+              "type": "context"
+            },
+            {
+              "i": 4,
+              "new": 4,
+              "old": 4,
+              "text": "delta",
+              "type": "context"
+            },
+            {
+              "i": 5,
+              "new": 5,
+              "old": 5,
+              "text": "echo",
+              "type": "context"
+            },
+            {
+              "i": 6,
+              "new": 6,
+              "old": 6,
+              "text": "foxtrot",
+              "type": "context"
+            },
+            {
+              "i": 7,
+              "new": 7,
+              "old": 7,
+              "text": "golf",
+              "type": "context"
+            },
+            {
+              "i": 8,
+              "new": 8,
+              "old": null,
+              "text": "hotel",
+              "type": "add"
+            }
+          ],
+          "new_count": 8,
+          "new_start": 1,
+          "old_count": 7,
+          "old_start": 1
+        }
+      ],
+      "id": "f7",
+      "language": null,
+      "noise": false,
+      "old_path": "plain.txt",
+      "path": "plain.txt",
+      "status": "modified",
+      "truncated": false
+    },
+    {
+      "additions": 4,
+      "binary": false,
+      "deletions": 1,
+      "hunks": [
+        {
+          "additions": 4,
+          "deletions": 1,
+          "header": "@@ -3,5 +3,8 @@ importers:",
+          "id": "f8h0",
+          "lines": [
+            {
+              "i": 0,
+              "new": 3,
+              "old": 3,
+              "text": "  .:",
+              "type": "context"
+            },
+            {
+              "i": 1,
+              "new": 4,
+              "old": 4,
+              "text": "    dependencies:",
+              "type": "context"
+            },
+            {
+              "i": 2,
+              "new": 5,
+              "old": 5,
+              "text": "      left-pad:",
+              "type": "context"
+            },
+            {
+              "i": 3,
+              "new": null,
+              "old": 6,
+              "text": "        specifier: ^1.0.0",
+              "type": "del"
+            },
+            {
+              "i": 4,
+              "new": 6,
+              "old": null,
+              "text": "        specifier: ^1.1.0",
+              "type": "add"
+            },
+            {
+              "i": 5,
+              "new": 7,
+              "old": 7,
+              "text": "        version: 1.3.0",
+              "type": "context"
+            },
+            {
+              "i": 6,
+              "new": 8,
+              "old": null,
+              "text": "      right-pad:",
+              "type": "add"
+            },
+            {
+              "i": 7,
+              "new": 9,
+              "old": null,
+              "text": "        specifier: ^2.0.0",
+              "type": "add"
+            },
+            {
+              "i": 8,
+              "new": 10,
+              "old": null,
+              "text": "        version: 2.0.1",
+              "type": "add"
+            }
+          ],
+          "new_count": 8,
+          "new_start": 3,
+          "old_count": 5,
+          "old_start": 3
+        }
+      ],
+      "id": "f8",
+      "language": "yaml",
+      "noise": true,
+      "old_path": "pnpm-lock.yaml",
+      "path": "pnpm-lock.yaml",
+      "status": "modified",
+      "truncated": false
+    },
+    {
+      "additions": 0,
+      "binary": false,
+      "deletions": 2,
+      "hunks": [
+        {
+          "additions": 0,
+          "deletions": 2,
+          "header": "@@ -1,5 +1,3 @@",
+          "id": "f9h0",
+          "lines": [
+            {
+              "i": 0,
+              "new": 1,
+              "old": 1,
+              "text": "-- lookup by identifier",
+              "type": "context"
+            },
+            {
+              "i": 1,
+              "new": 2,
+              "old": 2,
+              "text": "SELECT * FROM docs WHERE id = 1;",
+              "type": "context"
+            },
+            {
+              "i": 2,
+              "new": null,
+              "old": 3,
+              "text": "-- legacy path, unused",
+              "type": "del"
+            },
+            {
+              "i": 3,
+              "new": null,
+              "old": 4,
+              "text": "SELECT * FROM docs_v1 WHERE id = 1;",
+              "type": "del"
+            },
+            {
+              "i": 4,
+              "new": 3,
+              "old": 5,
+              "text": "SELECT count(*) FROM docs;",
+              "type": "context"
+            }
+          ],
+          "new_count": 3,
+          "new_start": 1,
+          "old_count": 5,
+          "old_start": 1
+        }
+      ],
+      "id": "f9",
+      "language": "sql",
+      "noise": false,
+      "old_path": "queries.sql",
+      "path": "queries.sql",
+      "status": "modified",
+      "truncated": false
+    },
+    {
+      "additions": 2,
+      "binary": false,
+      "deletions": 1,
+      "hunks": [
+        {
+          "additions": 1,
+          "deletions": 1,
+          "header": "@@ -1,5 +1,5 @@",
+          "id": "f10h0",
+          "lines": [
+            {
+              "i": 0,
+              "new": 1,
+              "old": 1,
+              "text": "uno",
+              "type": "context"
+            },
+            {
+              "i": 1,
+              "new": null,
+              "old": 2,
+              "text": "dos",
+              "type": "del"
+            },
+            {
+              "i": 2,
+              "new": 2,
+              "old": null,
+              "text": "dos CHANGED",
+              "type": "add"
+            },
+            {
+              "i": 3,
+              "new": 3,
+              "old": 3,
+              "text": "tres",
+              "type": "context"
+            },
+            {
+              "i": 4,
+              "new": 4,
+              "old": 4,
+              "text": "cuatro",
+              "type": "context"
+            },
+            {
+              "i": 5,
+              "new": 5,
+              "old": 5,
+              "text": "cinco",
+              "type": "context"
+            }
+          ],
+          "new_count": 5,
+          "new_start": 1,
+          "old_count": 5,
+          "old_start": 1
+        },
+        {
+          "additions": 1,
+          "deletions": 0,
+          "header": "@@ -8,3 +8,4 @@ siete",
+          "id": "f10h1",
+          "lines": [
+            {
+              "i": 0,
+              "new": 8,
+              "old": 8,
+              "text": "ocho",
+              "type": "context"
+            },
+            {
+              "i": 1,
+              "new": 9,
+              "old": 9,
+              "text": "nueve",
+              "type": "context"
+            },
+            {
+              "i": 2,
+              "new": 10,
+              "old": 10,
+              "text": "diez",
+              "type": "context"
+            },
+            {
+              "i": 3,
+              "new": 11,
+              "old": null,
+              "text": "once",
+              "type": "add"
+            }
+          ],
+          "new_count": 4,
+          "new_start": 8,
+          "old_count": 3,
+          "old_start": 8
+        }
+      ],
+      "id": "f10",
+      "language": null,
+      "noise": false,
+      "old_path": "moved-and-edited.txt",
+      "path": "renamed-and-edited.txt",
+      "status": "renamed",
+      "truncated": false
+    },
+    {
+      "additions": 0,
+      "binary": false,
+      "deletions": 0,
+      "hunks": [],
+      "id": "f11",
+      "language": null,
+      "noise": false,
+      "old_path": "moved.txt",
+      "path": "renamed.txt",
+      "status": "renamed",
+      "truncated": false
+    },
+    {
+      "additions": 6,
+      "binary": false,
+      "deletions": 0,
+      "hunks": [
+        {
+          "additions": 6,
+          "deletions": 0,
+          "header": "@@ -0,0 +1,6 @@",
+          "id": "f12h0",
+          "lines": [
+            {
+              "i": 0,
+              "new": 1,
+              "old": null,
+              "text": "keep this line",
+              "type": "add"
+            },
+            {
+              "i": 1,
+              "new": 2,
+              "old": null,
+              "text": "totally different content here",
+              "type": "add"
+            },
+            {
+              "i": 2,
+              "new": 3,
+              "old": null,
+              "text": "nothing in common with before",
+              "type": "add"
+            },
+            {
+              "i": 3,
+              "new": 4,
+              "old": null,
+              "text": "another unrelated line",
+              "type": "add"
+            },
+            {
+              "i": 4,
+              "new": 5,
+              "old": null,
+              "text": "yet another unrelated line",
+              "type": "add"
+            },
+            {
+              "i": 5,
+              "new": 6,
+              "old": null,
+              "text": "and one more for good measure",
+              "type": "add"
+            }
+          ],
+          "new_count": 6,
+          "new_start": 1,
+          "old_count": 0,
+          "old_start": 0
+        }
+      ],
+      "id": "f12",
+      "language": null,
+      "noise": false,
+      "old_path": "rewritten.txt",
+      "path": "rewritten.txt",
+      "status": "added",
+      "truncated": false
+    },
+    {
+      "additions": 1,
+      "binary": false,
+      "deletions": 1,
+      "hunks": [
+        {
+          "additions": 1,
+          "deletions": 1,
+          "header": "@@ -1,2 +1,2 @@",
+          "id": "f13h0",
+          "lines": [
+            {
+              "i": 0,
+              "new": 1,
+              "old": 1,
+              "text": "colon in the path",
+              "type": "context"
+            },
+            {
+              "i": 1,
+              "new": null,
+              "old": 2,
+              "text": "line two",
+              "type": "del"
+            },
+            {
+              "i": 2,
+              "new": 2,
+              "old": null,
+              "text": "line two rewritten",
+              "type": "add"
+            }
+          ],
+          "new_count": 2,
+          "new_start": 1,
+          "old_count": 2,
+          "old_start": 1
+        }
+      ],
+      "id": "f13",
+      "language": null,
+      "noise": false,
+      "old_path": "src/weird:name.txt",
+      "path": "src/weird:name.txt",
+      "status": "modified",
+      "truncated": false
+    }
+  ]
+}

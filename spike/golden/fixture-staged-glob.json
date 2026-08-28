@@ -1,0 +1,203 @@
+{
+  "files": [
+    {
+      "additions": 11,
+      "binary": false,
+      "deletions": 0,
+      "hunks": [
+        {
+          "additions": 11,
+          "deletions": 0,
+          "header": "@@ -0,0 +1,11 @@",
+          "id": "f0h0",
+          "lines": [
+            {
+              "i": 0,
+              "new": 1,
+              "old": null,
+              "text": "uno",
+              "type": "add"
+            },
+            {
+              "i": 1,
+              "new": 2,
+              "old": null,
+              "text": "dos CHANGED",
+              "type": "add"
+            },
+            {
+              "i": 2,
+              "new": 3,
+              "old": null,
+              "text": "tres",
+              "type": "add"
+            },
+            {
+              "i": 3,
+              "new": 4,
+              "old": null,
+              "text": "cuatro",
+              "type": "add"
+            },
+            {
+              "i": 4,
+              "new": 5,
+              "old": null,
+              "text": "cinco",
+              "type": "add"
+            },
+            {
+              "i": 5,
+              "new": 6,
+              "old": null,
+              "text": "seis",
+              "type": "add"
+            },
+            {
+              "i": 6,
+              "new": 7,
+              "old": null,
+              "text": "siete",
+              "type": "add"
+            },
+            {
+              "i": 7,
+              "new": 8,
+              "old": null,
+              "text": "ocho",
+              "type": "add"
+            },
+            {
+              "i": 8,
+              "new": 9,
+              "old": null,
+              "text": "nueve",
+              "type": "add"
+            },
+            {
+              "i": 9,
+              "new": 10,
+              "old": null,
+              "text": "diez",
+              "type": "add"
+            },
+            {
+              "i": 10,
+              "new": 11,
+              "old": null,
+              "text": "once",
+              "type": "add"
+            }
+          ],
+          "new_count": 11,
+          "new_start": 1,
+          "old_count": 0,
+          "old_start": 0
+        }
+      ],
+      "id": "f0",
+      "language": null,
+      "noise": false,
+      "old_path": "renamed-and-edited.txt",
+      "path": "renamed-and-edited.txt",
+      "status": "added",
+      "truncated": false
+    },
+    {
+      "additions": 10,
+      "binary": false,
+      "deletions": 0,
+      "hunks": [
+        {
+          "additions": 10,
+          "deletions": 0,
+          "header": "@@ -0,0 +1,10 @@",
+          "id": "f1h0",
+          "lines": [
+            {
+              "i": 0,
+              "new": 1,
+              "old": null,
+              "text": "one",
+              "type": "add"
+            },
+            {
+              "i": 1,
+              "new": 2,
+              "old": null,
+              "text": "two",
+              "type": "add"
+            },
+            {
+              "i": 2,
+              "new": 3,
+              "old": null,
+              "text": "three",
+              "type": "add"
+            },
+            {
+              "i": 3,
+              "new": 4,
+              "old": null,
+              "text": "four",
+              "type": "add"
+            },
+            {
+              "i": 4,
+              "new": 5,
+              "old": null,
+              "text": "five",
+              "type": "add"
+            },
+            {
+              "i": 5,
+              "new": 6,
+              "old": null,
+              "text": "six",
+              "type": "add"
+            },
+            {
+              "i": 6,
+              "new": 7,
+              "old": null,
+              "text": "seven",
+              "type": "add"
+            },
+            {
+              "i": 7,
+              "new": 8,
+              "old": null,
+              "text": "eight",
+              "type": "add"
+            },
+            {
+              "i": 8,
+              "new": 9,
+              "old": null,
+              "text": "nine",
+              "type": "add"
+            },
+            {
+              "i": 9,
+              "new": 10,
+              "old": null,
+              "text": "ten",
+              "type": "add"
+            }
+          ],
+          "new_count": 10,
+          "new_start": 1,
+          "old_count": 0,
+          "old_start": 0
+        }
+      ],
+      "id": "f1",
+      "language": null,
+      "noise": false,
+      "old_path": "renamed.txt",
+      "path": "renamed.txt",
+      "status": "added",
+      "truncated": false
+    }
+  ]
+}

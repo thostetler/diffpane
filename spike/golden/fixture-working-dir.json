@@ -1,0 +1,51 @@
+{
+  "files": [
+    {
+      "additions": 1,
+      "binary": false,
+      "deletions": 1,
+      "hunks": [
+        {
+          "additions": 1,
+          "deletions": 1,
+          "header": "@@ -1,2 +1,2 @@",
+          "id": "f0h0",
+          "lines": [
+            {
+              "i": 0,
+              "new": 1,
+              "old": 1,
+              "text": "colon in the path",
+              "type": "context"
+            },
+            {
+              "i": 1,
+              "new": null,
+              "old": 2,
+              "text": "line two",
+              "type": "del"
+            },
+            {
+              "i": 2,
+              "new": 2,
+              "old": null,
+              "text": "line two rewritten",
+              "type": "add"
+            }
+          ],
+          "new_count": 2,
+          "new_start": 1,
+          "old_count": 2,
+          "old_start": 1
+        }
+      ],
+      "id": "f0",
+      "language": null,
+      "noise": false,
+      "old_path": "src/weird:name.txt",
+      "path": "src/weird:name.txt",
+      "status": "modified",
+      "truncated": false
+    }
+  ]
+}

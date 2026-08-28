@@ -184,8 +184,12 @@ async fn host_review(
 
   let _ = shutdown_tx.send(());
   // The shutdown waits for in-flight responses, so a submit finishes flushing
-  // here. The bound is for a connection that never does (item 21).
-  let _ = tokio::time::timeout(SHUTDOWN_GRACE, served).await;
+  // here. The bound is for a connection that never does — and a second Ctrl+C
+  // means the human is done waiting for it, so it cuts the grace short.
+  tokio::select! {
+    _ = tokio::time::timeout(SHUTDOWN_GRACE, served) => {}
+    _ = tokio::signal::ctrl_c(), if ending == Ending::Interrupt => {}
+  }
   Ok(ending)
 }
 

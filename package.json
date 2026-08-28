@@ -1,0 +1,37 @@
+{
+  "name": "diffpane",
+  "version": "0.1.0",
+  "description": "Review a git diff in your browser, comment on the lines, hand the feedback back to your agent.",
+  "keywords": [
+    "diff",
+    "code-review",
+    "git",
+    "agent",
+    "cli"
+  ],
+  "license": "MIT",
+  "author": "Tim Hostetler",
+  "type": "module",
+  "bin": {
+    "diffpane": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "ui",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=22.6"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.test.json",
+    "test": "node --experimental-strip-types --test src/*.test.ts",
+    "prepublishOnly": "npm run build"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2"
+  }
+}

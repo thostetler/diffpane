@@ -1,0 +1,326 @@
+{
+  "meta": {
+    "repo": "nectar",
+    "repo_root": "/home/tim/code/nectar",
+    "slug": "2026-08-27-search-cache",
+    "scope": "branch",
+    "base": "origin/main",
+    "head": "HEAD",
+    "diff_cmd": "git diff origin/main...HEAD",
+    "generated_at": "2026-08-27T14:02:11Z",
+    "totals": { "files": 7, "additions": 512, "deletions": 96 }
+  },
+  "hunks": {
+    "files": [
+      {
+        "id": "f0",
+        "path": "src/search/cache.ts",
+        "old_path": "src/search/cache.ts",
+        "status": "modified",
+        "additions": 63,
+        "deletions": 8,
+        "binary": false,
+        "noise": false,
+        "language": "typescript",
+        "truncated": false,
+        "hunks": [
+          {
+            "id": "f0h0",
+            "header": "@@ -1,12 +1,44 @@",
+            "old_start": 1,
+            "old_count": 12,
+            "new_start": 1,
+            "new_count": 44,
+            "additions": 37,
+            "deletions": 5,
+            "lines": [
+              { "i": 0, "type": "context", "old": 1, "new": 1, "text": "import { normalizeQuery } from \"./normalize\";" },
+              { "i": 1, "type": "context", "old": 2, "new": 2, "text": "import type { SearchResult } from \"./types\";" },
+              { "i": 2, "type": "del", "old": 3, "new": null, "text": "const cache = new Map<string, SearchResult[]>();" },
+              { "i": 3, "type": "add", "old": null, "new": 3, "text": "type Entry = { value: SearchResult[]; touchedAt: number };" },
+              { "i": 4, "type": "add", "old": null, "new": 4, "text": "const MAX_ENTRIES = 50;" },
+              { "i": 5, "type": "add", "old": null, "new": 5, "text": "const cache = new Map<string, Entry>();" },
+              { "i": 6, "type": "context", "old": 4, "new": 6, "text": "" },
+              { "i": 7, "type": "context", "old": 5, "new": 7, "text": "export function getCachedResults(query: string): SearchResult[] | undefined {" },
+              { "i": 8, "type": "del", "old": 6, "new": null, "text": "\treturn cache.get(normalizeQuery(query));" },
+              { "i": 9, "type": "add", "old": null, "new": 8, "text": "\tconst key = normalizeQuery(query);" },
+              { "i": 10, "type": "add", "old": null, "new": 9, "text": "\tconst hit = cache.get(key);" },
+              { "i": 11, "type": "add", "old": null, "new": 10, "text": "\tif (!hit) return undefined;" },
+              { "i": 12, "type": "add", "old": null, "new": 11, "text": "\thit.touchedAt = Date.now();" },
+              { "i": 13, "type": "add", "old": null, "new": 12, "text": "\treturn hit.value;" },
+              { "i": 14, "type": "context", "old": 7, "new": 13, "text": "}" },
+              { "i": 15, "type": "context", "old": 8, "new": 14, "text": "" },
+              { "i": 16, "type": "del", "old": 9, "new": null, "text": "export function putCachedResults(query: string, results: SearchResult[]): void {" },
+              { "i": 17, "type": "del", "old": 10, "new": null, "text": "\tcache.set(normalizeQuery(query), results);" },
+              { "i": 18, "type": "add", "old": null, "new": 15, "text": "export function putCachedResults(query: string, results: SearchResult[], now = Date.now()): void {" },
+              { "i": 19, "type": "add", "old": null, "new": 16, "text": "\tconst key = normalizeQuery(query);" },
+              { "i": 20, "type": "add", "old": null, "new": 17, "text": "\tcache.set(key, { value: results, touchedAt: now });" },
+              { "i": 21, "type": "add", "old": null, "new": 18, "text": "\twhile (cache.size > MAX_ENTRIES) {" },
+              { "i": 22, "type": "add", "old": null, "new": 19, "text": "\t\tlet oldestKey: string | undefined;" },
+              { "i": 23, "type": "add", "old": null, "new": 20, "text": "\t\tlet oldest = Number.POSITIVE_INFINITY;" },
+              { "i": 24, "type": "add", "old": null, "new": 21, "text": "\t\tfor (const [candidate, entry] of cache) {" },
+              { "i": 25, "type": "add", "old": null, "new": 22, "text": "\t\t\tif (entry.touchedAt < oldest) {" },
+              { "i": 26, "type": "add", "old": null, "new": 23, "text": "\t\t\t\toldest = entry.touchedAt;" },
+              { "i": 27, "type": "add", "old": null, "new": 24, "text": "\t\t\t\toldestKey = candidate;" },
+              { "i": 28, "type": "add", "old": null, "new": 25, "text": "\t\t\t}" },
+              { "i": 29, "type": "add", "old": null, "new": 26, "text": "\t\t}" },
+              { "i": 30, "type": "add", "old": null, "new": 27, "text": "\t\tif (!oldestKey) break;" },
+              { "i": 31, "type": "add", "old": null, "new": 28, "text": "\t\tcache.delete(oldestKey);" },
+              { "i": 32, "type": "add", "old": null, "new": 29, "text": "\t}" },
+              { "i": 33, "type": "context", "old": 11, "new": 30, "text": "}" },
+              { "i": 34, "type": "context", "old": 12, "new": 31, "text": "" },
+              { "i": 35, "type": "add", "old": null, "new": 32, "text": "export function clearSearchCache(): void {" },
+              { "i": 36, "type": "add", "old": null, "new": 33, "text": "\tcache.clear();" },
+              { "i": 37, "type": "add", "old": null, "new": 34, "text": "}" },
+              { "i": 38, "type": "add", "old": null, "new": 35, "text": "" },
+              { "i": 39, "type": "add", "old": null, "new": 36, "text": "export function cacheSize(): number {" },
+              { "i": 40, "type": "add", "old": null, "new": 37, "text": "\treturn cache.size;" },
+              { "i": 41, "type": "add", "old": null, "new": 38, "text": "}" },
+              { "i": 42, "type": "add", "old": null, "new": 39, "text": "" },
+              { "i": 43, "type": "add", "old": null, "new": 40, "text": "export const __unsafeDebugCache = cache;" },
+              { "i": 44, "type": "add", "old": null, "new": 41, "text": "export const veryLongLineForLayout = \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\";" }
+            ]
+          },
+          {
+            "id": "f0h1",
+            "header": "@@ -40,6 +72,12 @@ export async function search(",
+            "old_start": 40,
+            "old_count": 6,
+            "new_start": 72,
+            "new_count": 12,
+            "additions": 7,
+            "deletions": 1,
+            "lines": [
+              { "i": 0, "type": "context", "old": 40, "new": 72, "text": "export async function search(query: string): Promise<SearchResult[]> {" },
+              { "i": 1, "type": "add", "old": null, "new": 73, "text": "\tconst cached = getCachedResults(query);" },
+              { "i": 2, "type": "add", "old": null, "new": 74, "text": "\tif (cached) return cached;" },
+              { "i": 3, "type": "context", "old": 41, "new": 75, "text": "\tconst response = await client.search(query);" },
+              { "i": 4, "type": "del", "old": 42, "new": null, "text": "\treturn response.items;" },
+              { "i": 5, "type": "add", "old": null, "new": 76, "text": "\tputCachedResults(query, response.items);" },
+              { "i": 6, "type": "add", "old": null, "new": 77, "text": "\treturn response.items;" },
+              { "i": 7, "type": "context", "old": 43, "new": 78, "text": "}" }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "f1",
+        "path": "src/search/cache.test.ts",
+        "old_path": null,
+        "status": "added",
+        "additions": 22,
+        "deletions": 0,
+        "binary": false,
+        "noise": false,
+        "language": "typescript",
+        "truncated": false,
+        "hunks": [
+          {
+            "id": "f1h0",
+            "header": "@@ -0,0 +1,22 @@",
+            "old_start": 0,
+            "old_count": 0,
+            "new_start": 1,
+            "new_count": 22,
+            "additions": 22,
+            "deletions": 0,
+            "lines": [
+              { "i": 0, "type": "add", "old": null, "new": 1, "text": "import { cacheSize, clearSearchCache, getCachedResults, putCachedResults } from \"./cache\";" },
+              { "i": 1, "type": "add", "old": null, "new": 2, "text": "" },
+              { "i": 2, "type": "add", "old": null, "new": 3, "text": "describe(\"search cache\", () => {" },
+              { "i": 3, "type": "add", "old": null, "new": 4, "text": "\tafterEach(() => clearSearchCache());" },
+              { "i": 4, "type": "add", "old": null, "new": 5, "text": "" },
+              { "i": 5, "type": "add", "old": null, "new": 6, "text": "\tit(\"normalizes keys\", () => {" },
+              { "i": 6, "type": "add", "old": null, "new": 7, "text": "\t\tputCachedResults(\" Cats \", [{ id: \"1\", title: \"Cats\" } as any], 10);" },
+              { "i": 7, "type": "add", "old": null, "new": 8, "text": "\t\texpect(getCachedResults(\"cats\")).toHaveLength(1);" },
+              { "i": 8, "type": "add", "old": null, "new": 9, "text": "\t});" },
+              { "i": 9, "type": "add", "old": null, "new": 10, "text": "" },
+              { "i": 10, "type": "add", "old": null, "new": 11, "text": "\tit(\"can clear entries\", () => {" },
+              { "i": 11, "type": "add", "old": null, "new": 12, "text": "\t\tputCachedResults(\"dogs\", [], 11);" },
+              { "i": 12, "type": "add", "old": null, "new": 13, "text": "\t\tclearSearchCache();" },
+              { "i": 13, "type": "add", "old": null, "new": 14, "text": "\t\texpect(cacheSize()).toBe(0);" },
+              { "i": 14, "type": "add", "old": null, "new": 15, "text": "\t});" },
+              { "i": 15, "type": "add", "old": null, "new": 16, "text": "});" }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "f2",
+        "path": "src/search/old-cache.ts",
+        "old_path": "src/search/old-cache.ts",
+        "status": "deleted",
+        "additions": 0,
+        "deletions": 11,
+        "binary": false,
+        "noise": false,
+        "language": "typescript",
+        "truncated": false,
+        "hunks": [
+          {
+            "id": "f2h0",
+            "header": "@@ -1,11 +0,0 @@",
+            "old_start": 1,
+            "old_count": 11,
+            "new_start": 0,
+            "new_count": 0,
+            "additions": 0,
+            "deletions": 11,
+            "lines": [
+              { "i": 0, "type": "del", "old": 1, "new": null, "text": "export class OldCache {" },
+              { "i": 1, "type": "del", "old": 2, "new": null, "text": "\tprivate items = new Map<string, unknown>();" },
+              { "i": 2, "type": "del", "old": 3, "new": null, "text": "\tget(key: string) {" },
+              { "i": 3, "type": "del", "old": 4, "new": null, "text": "\t\treturn this.items.get(key);" },
+              { "i": 4, "type": "del", "old": 5, "new": null, "text": "\t}" },
+              { "i": 5, "type": "del", "old": 6, "new": null, "text": "}" }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "f3",
+        "path": "pnpm-lock.yaml",
+        "old_path": "pnpm-lock.yaml",
+        "status": "modified",
+        "additions": 380,
+        "deletions": 72,
+        "binary": false,
+        "noise": true,
+        "language": "yaml",
+        "truncated": false,
+        "hunks": [
+          {
+            "id": "f3h0",
+            "header": "@@ -1240,8 +1240,8 @@ snapshots:",
+            "old_start": 1240,
+            "old_count": 8,
+            "new_start": 1240,
+            "new_count": 8,
+            "additions": 3,
+            "deletions": 3,
+            "lines": [
+              { "i": 0, "type": "context", "old": 1240, "new": 1240, "text": "snapshots:" },
+              { "i": 1, "type": "del", "old": 1241, "new": null, "text": "  '@types/node@20.11.0':" },
+              { "i": 2, "type": "add", "old": null, "new": 1241, "text": "  '@types/node@20.12.7':" },
+              { "i": 3, "type": "context", "old": 1242, "new": 1242, "text": "    dependencies:" },
+              { "i": 4, "type": "context", "old": 1243, "new": 1243, "text": "      undici-types: 5.26.5" }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "f4",
+        "path": "public/search-preview.png",
+        "old_path": "public/search-preview.png",
+        "status": "modified",
+        "additions": 0,
+        "deletions": 0,
+        "binary": true,
+        "noise": false,
+        "language": null,
+        "truncated": false,
+        "hunks": []
+      },
+      {
+        "id": "f5",
+        "path": "src/generated/search-schema.ts",
+        "old_path": "src/generated/search-schema.ts",
+        "status": "modified",
+        "additions": 47,
+        "deletions": 5,
+        "binary": false,
+        "noise": true,
+        "language": "typescript",
+        "truncated": true,
+        "hunks": [
+          {
+            "id": "f5h0",
+            "header": "@@ -1,6 +1,10 @@",
+            "old_start": 1,
+            "old_count": 6,
+            "new_start": 1,
+            "new_count": 10,
+            "additions": 6,
+            "deletions": 2,
+            "lines": [
+              { "i": 0, "type": "context", "old": 1, "new": 1, "text": "export const schema = {" },
+              { "i": 1, "type": "del", "old": 2, "new": null, "text": "  version: 12," },
+              { "i": 2, "type": "add", "old": null, "new": 2, "text": "  version: 13," },
+              { "i": 3, "type": "add", "old": null, "new": 3, "text": "  cache: { enabled: true, maxEntries: 50 }," },
+              { "i": 4, "type": "context", "old": 3, "new": 4, "text": "  fields: [" },
+              { "i": 5, "type": "context", "old": 4, "new": 5, "text": "    \"title\"," },
+              { "i": 6, "type": "context", "old": 5, "new": 6, "text": "    \"body\"" }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "f6",
+        "path": "docs/search-cache.md",
+        "old_path": "docs/search-cache.md",
+        "status": "modified",
+        "additions": 0,
+        "deletions": 0,
+        "binary": false,
+        "noise": false,
+        "language": "markdown",
+        "truncated": false,
+        "hunks": []
+      }
+    ]
+  },
+  "review": {
+    "title": "Search result caching",
+    "story": "Adds a small LRU in front of the search endpoint and updates generated schema output.",
+    "chapters": [
+      {
+        "id": "c1",
+        "title": "Cache layer",
+        "intent": "New bounded cache keyed on normalised query.",
+        "why": "Repeat queries were hitting search on every keystroke.",
+        "hunks": ["f0h0", "f0h1", "f2h0", "missing-hunk"],
+        "size": "+63/-19",
+        "flags": ["Debug export should not ship.", "Eviction has no direct test."]
+      },
+      {
+        "id": "c2",
+        "title": "Generated and binary changes",
+        "intent": "Schema and image artifacts moved with the cache work.",
+        "why": "The runtime schema now exposes cache metadata.",
+        "hunks": ["f5h0"],
+        "size": "+47/-5",
+        "flags": ["Generated file is truncated."]
+      }
+    ],
+    "file_notes": {
+      "src/search/cache.ts": "Read top-down; the hunk intentionally exceeds forty lines.",
+      "src/generated/search-schema.ts": "Generated output, truncated after first hunk."
+    }
+  },
+  "comments": {
+    "comments": [
+      {
+        "id": "c-7f3a1b",
+        "anchor": { "kind": "line", "file": "src/search/cache.ts", "hunk": "f0h0", "side": "new", "line": 40, "chapter": "c1" },
+        "verdict": "fix",
+        "body": "This debug export exposes mutable cache state to production callers.",
+        "created_at": "2026-08-27T14:11:02Z",
+        "updated_at": "2026-08-27T14:11:02Z",
+        "resolved": false
+      },
+      {
+        "id": "c-a91e20",
+        "anchor": { "kind": "file", "file": "src/search/cache.test.ts" },
+        "verdict": "question",
+        "body": "Should there be an explicit eviction-order assertion?",
+        "created_at": "2026-08-27T14:14:19Z",
+        "updated_at": "2026-08-27T14:18:45Z",
+        "resolved": true
+      }
+    ],
+    "progress": { "c1": "reviewed" },
+    "overall": { "verdict": "fix", "body": "Mostly solid, but remove the debug export and add eviction coverage." },
+    "submitted": false,
+    "submitted_at": null
+  }
+}

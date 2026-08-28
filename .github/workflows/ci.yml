@@ -39,6 +39,23 @@ jobs:
       - run: cargo clippy --all-targets -- -D warnings
       - run: cargo test
 
+  # The port's actual proof: the Rust diff layer's output, byte for byte
+  # against the TypeScript pipeline shelling out to real git. `check-golden`
+  # is the half that outlives the TypeScript's deletion.
+  parity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust
+      - run: ./spike/parity.sh fixtures
+      - run: ./spike/parity.sh check-golden
+
   ui:
     runs-on: ubuntu-latest
     steps:

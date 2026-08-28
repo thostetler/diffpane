@@ -146,6 +146,13 @@ async function main(): Promise<number> {
   return run(parsed.options);
 }
 
+// `diffpane --json | head` closes stdout early. Swallow the broken pipe rather
+// than dying on an unhandled error event, and let main() keep its exit code —
+// exiting 0 here would report a review as approved that nobody ever read.
+process.stdout.on('error', (error: NodeJS.ErrnoException) => {
+  if (error.code !== 'EPIPE') throw error;
+});
+
 main().then(
   (code) => {
     process.exitCode = code;

@@ -105,11 +105,12 @@ impl ConsumeHunk for Collector {
   }
 }
 
-/// The UI renders `text` itself, so the terminator is noise — and keeping `\r`
-/// would render as a stray glyph on every line of a CRLF file.
+/// The UI renders `text` itself, so the `\n` is noise. `\r` is not: git's
+/// patch format keeps it, `.gitattributes` eol conversion already removes it
+/// from a genuine CRLF file, and stripping it here silently rewrote the
+/// content of files that use a bare CR as a line separator.
 fn strip_terminator(line: &[u8]) -> &[u8] {
-  let line = line.strip_suffix(b"\n").unwrap_or(line);
-  line.strip_suffix(b"\r").unwrap_or(line)
+  line.strip_suffix(b"\n").unwrap_or(line)
 }
 
 /// An empty side is reported at the line *before* the hunk, so a wholly deleted
@@ -220,12 +221,13 @@ mod tests {
   use super::*;
 
   #[test]
-  fn drops_both_halves_of_a_crlf_terminator() {
-    assert_eq!(strip_terminator(b"line\r\n"), b"line");
+  fn drops_the_newline_and_keeps_every_carriage_return() {
     assert_eq!(strip_terminator(b"line\n"), b"line");
     assert_eq!(strip_terminator(b"line"), b"line");
-    // A lone \r mid-file is content, not a terminator.
-    assert_eq!(strip_terminator(b"line\r"), b"line");
+    // git's patch carries both, so parity says we do too.
+    assert_eq!(strip_terminator(b"line\r\n"), b"line\r");
+    // A CR-separated file is one long line; that trailing CR is content.
+    assert_eq!(strip_terminator(b"line\r"), b"line\r");
   }
 
   #[test]

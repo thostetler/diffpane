@@ -160,6 +160,9 @@ pnpm install
 pnpm test          # node:test, no test framework
 pnpm typecheck
 pnpm build
+
+pnpm exec playwright install chromium
+pnpm test:ui       # browser coverage for ui/, against a real server
 ```
 
 Zero runtime dependencies. `src/` is the CLI and server; `ui/` is vanilla

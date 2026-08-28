@@ -13,8 +13,8 @@ narrated walkthrough in chat, this is the wrong skill.
 
 The tool is a standalone CLI. Your job is the narrative and the follow-through;
 the CLI does everything else. If `diffpane` is not on PATH, stop and tell the
-user to `npm install -g diffpane` — do not try to review the diff yourself
-instead.
+user to `npm install -g github:thostetler/diffpane` — do not try to review the
+diff yourself instead.
 
 ## 1. Write the narrative first
 

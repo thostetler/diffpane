@@ -13,14 +13,10 @@ Nothing leaves your machine. No account, no service, no runtime dependencies.
 
 ## Install
 
-```sh
-npx diffpane
-```
-
-Or install it properly:
+Not on npm yet — install from source:
 
 ```sh
-npm install -g diffpane
+npm install -g github:thostetler/diffpane
 ```
 
 Requires Node 22.6+ and `git`.

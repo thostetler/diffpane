@@ -3,6 +3,7 @@
     "repo": "nectar",
     "repo_root": "/home/tim/code/nectar",
     "slug": "2026-08-27-search-cache",
+    "title": "Search result cache",
     "scope": "branch",
     "base": "origin/main",
     "head": "HEAD",
@@ -106,7 +107,7 @@
       {
         "id": "f1",
         "path": "src/search/cache.test.ts",
-        "old_path": null,
+        "old_path": "src/search/cache.test.ts",
         "status": "added",
         "additions": 22,
         "deletions": 0,

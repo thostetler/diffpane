@@ -36,6 +36,7 @@ Chrome.
   "repo": "nectar",
   "repo_root": "/home/tim/code/nectar",
   "slug": "2026-08-27-search-cache",
+  "title": "Search result cache",
   "scope": "branch",
   "base": "origin/main",
   "head": "HEAD",
@@ -45,7 +46,8 @@ Chrome.
 }
 ```
 
-`scope` is one of `branch`, `working`, `staged`, `range`, `commit`.
+`scope` is one of `branch`, `working`, `staged`, `range`, `commit`. Every field
+is required: the backend refuses to serve a session it cannot read.
 
 ## hunks.json
 

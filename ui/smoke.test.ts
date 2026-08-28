@@ -4,16 +4,14 @@
  * colours, spacing and copy are expected to churn, focus and data are not.
  */
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
-import type { Server } from 'node:http';
+import { execFileSync, spawn, type ChildProcess } from 'node:child_process';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import type { Readable } from 'node:stream';
 import { after, afterEach, before, beforeEach, test } from 'node:test';
 
 import { chromium, type Browser, type Page } from 'playwright';
-
-import { buildServer, generateToken, listen } from '../src/server.ts';
-import { Session, writeJson } from '../src/session.ts';
 
 interface Fixture {
   meta: unknown;
@@ -22,46 +20,83 @@ interface Fixture {
   comments: { comments: unknown[] };
 }
 
+interface Address {
+  url: string;
+  token: string;
+}
+
+interface State {
+  overall: { verdict: string | null; body: string };
+}
+
+const ROOT = join(import.meta.dirname, '..');
+const MANIFEST = join(ROOT, 'rust', 'Cargo.toml');
+const SERVER = join(ROOT, 'rust', 'target', 'debug', 'examples', 'serve-fixture');
+
 const FIXTURE = JSON.parse(
   readFileSync(join(import.meta.dirname, 'fixture.json'), 'utf8'),
 ) as Fixture;
 
-const TOKEN = generateToken();
 /** The fixture ships a comment on this file; several cases depend on that. */
 const COMMENTED_FILE = 'src/search/cache.ts';
 
 let dir: string;
-let session: Session;
-let server: Server;
+let server: ChildProcess;
 let browser: Browser;
 let page: Page;
 let url: string;
 
-before(async () => {
-  dir = mkdtempSync(join(tmpdir(), 'diffpane-ui-'));
-  session = new Session(dir);
-  writeJson(session.metaPath, FIXTURE.meta);
-  writeJson(session.hunksPath, FIXTURE.hunks);
-  writeJson(session.reviewPath, FIXTURE.review);
-  server = buildServer({
-    session,
-    token: TOKEN,
-    onSubmitStart: () => undefined,
-    onSubmit: () => undefined,
+function writeJson(path: string, payload: unknown): void {
+  writeFileSync(path, `${JSON.stringify(payload, null, 2)}\n`);
+}
+
+function state(): State {
+  return JSON.parse(readFileSync(join(dir, 'comments.json'), 'utf8')) as State;
+}
+
+/** The address the server picked. It prints one line, then serves. */
+function firstLine(stream: Readable): Promise<string> {
+  return new Promise((resolve, reject) => {
+    let buffered = '';
+    const onData = (chunk: Buffer): void => {
+      buffered += chunk.toString();
+      const end = buffered.indexOf('\n');
+      if (end === -1) return;
+      stream.off('data', onData);
+      resolve(buffered.slice(0, end));
+    };
+    stream.on('data', onData);
+    stream.once('error', reject);
+    stream.once('end', () => reject(new Error('the server exited without an address')));
   });
-  url = `http://127.0.0.1:${await listen(server, 0)}/?t=${TOKEN}`;
+}
+
+before(async () => {
+  // The suite drives the shipping server, so it needs it built. cargo no-ops
+  // when it already is; `pnpm test:ui` is meant to work from a cold checkout.
+  execFileSync('cargo', ['build', '--manifest-path', MANIFEST, '--example', 'serve-fixture'], {
+    stdio: 'inherit',
+  });
+
+  dir = mkdtempSync(join(tmpdir(), 'diffpane-ui-'));
+  writeJson(join(dir, 'meta.json'), FIXTURE.meta);
+  writeJson(join(dir, 'hunks.json'), FIXTURE.hunks);
+  writeJson(join(dir, 'review.json'), FIXTURE.review);
+
+  server = spawn(SERVER, [dir], { stdio: ['ignore', 'pipe', 'inherit'] });
+  const address = JSON.parse(await firstLine(server.stdout!)) as Address;
+  url = address.url;
   browser = await chromium.launch();
 });
 
 after(async () => {
   await browser.close();
-  server.close();
-  server.closeAllConnections();
+  server.kill();
   rmSync(dir, { recursive: true, force: true });
 });
 
 beforeEach(async () => {
-  writeJson(session.statePath, {
+  writeJson(join(dir, 'comments.json'), {
     comments: FIXTURE.comments.comments,
     progress: {},
     overall: { verdict: null, body: '' },
@@ -203,7 +238,7 @@ test('the outcome control shows the verdict a submit would send', async () => {
   );
   await page.locator('.footer .seg.fix').click();
   await saved;
-  assert.equal(session.state().overall.verdict, 'fix');
+  assert.equal(state().overall.verdict, 'fix');
 });
 
 test('a saved comment is anchored under its line and counted in the sidebar', async () => {

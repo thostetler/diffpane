@@ -1,0 +1,43 @@
+name: Publish npm
+
+# Replaces dist's built-in npm publish job, which authenticates with a
+# long-lived NPM_TOKEN. This one uses npm's trusted publishing: GitHub mints an
+# OIDC token for the run and npm trades it for a short-lived credential, so
+# there is no secret to leak or rotate. npm validates the *calling* workflow for
+# reusable workflows, so the trusted publisher registered on npmjs.com names
+# release.yml, not this file.
+
+on:
+  workflow_call:
+    inputs:
+      plan:
+        required: true
+        type: string
+
+jobs:
+  publish-npm:
+    runs-on: ubuntu-latest
+    permissions:
+      # The OIDC token. A called workflow cannot ask for more than the caller
+      # granted, and dist's caller grants exactly id-token and packages — so no
+      # contents: read here, and nothing to check out.
+      id-token: write
+    env:
+      PLAN: ${{ inputs.plan }}
+    steps:
+      - name: Fetch npm packages
+        uses: actions/download-artifact@v8
+        with:
+          pattern: artifacts-*
+          path: npm/
+          merge-multiple: true
+      # Trusted publishing needs npm 11.5.1+ and node 22.14+.
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24.x'
+      - run: npm --version
+      - run: |
+          for release in $(echo "$PLAN" | jq --compact-output '.releases[] | select([.artifacts[] | endswith("-npm-package.tar.gz")] | any)'); do
+            pkg=$(echo "$release" | jq '.artifacts[] | select(endswith("-npm-package.tar.gz"))' --raw-output)
+            npm publish --access public "./npm/${pkg}"
+          done

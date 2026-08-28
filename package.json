@@ -36,7 +36,7 @@
     "typecheck": "tsc --noEmit && tsc -p tsconfig.test.json && tsc -p tsconfig.ui.json",
     "test": "node --experimental-strip-types --test src/*.test.ts",
     "test:ui": "node --experimental-strip-types --test ui/*.test.ts",
-    "prepublishOnly": "npm run build"
+    "prepare": "npm run build"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

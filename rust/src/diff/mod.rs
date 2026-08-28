@@ -45,6 +45,9 @@ pub fn entry_kind(mode: gix::index::entry::Mode) -> EntryKind {
   use gix::index::entry::Mode;
   match mode {
     Mode::SYMLINK => EntryKind::Link,
+    // A gitlink's id is a commit, not a blob. Calling it a blob makes the
+    // content pass fail on the whole diff rather than on the submodule.
+    Mode::COMMIT => EntryKind::Commit,
     m if m.contains(Mode::FILE_EXECUTABLE) => EntryKind::BlobExecutable,
     _ => EntryKind::Blob,
   }

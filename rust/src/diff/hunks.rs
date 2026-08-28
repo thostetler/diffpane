@@ -155,6 +155,63 @@ fn func_context(before: &[&[u8]], hunk_start: u32) -> Option<String> {
   None
 }
 
+/// A gitlink has no blob to diff, and handing one to the blob platform aborts
+/// the whole run with "Can only diff blobs and links, not Commit" — one
+/// submodule bump would cost the review every other file in it. git prints a
+/// single `Subproject commit <sha>` line per side, so we do too.
+///
+/// Known deviation: a type change between a file and a submodule renders only
+/// the submodule side, where git shows both.
+fn submodule_content(change: &Change) -> Content {
+  let is_gitlink = |side: Option<(gix::ObjectId, EntryKind)>| {
+    side.filter(|(_, kind)| *kind == EntryKind::Commit).map(|(id, _)| id)
+  };
+  let (old, new) = (is_gitlink(change.old), is_gitlink(change.new));
+  let header = HunkHeader {
+    before_hunk_start: 1,
+    before_hunk_len: u32::from(old.is_some()),
+    after_hunk_start: 1,
+    after_hunk_len: u32::from(new.is_some()),
+  };
+  let mut lines = Vec::with_capacity(2);
+  if let Some(id) = old {
+    lines.push(DiffLine {
+      i: lines.len(),
+      kind: LineType::Del,
+      old: Some(1),
+      new: None,
+      text: format!("Subproject commit {id}"),
+    });
+  }
+  if let Some(id) = new {
+    lines.push(DiffLine {
+      i: lines.len(),
+      kind: LineType::Add,
+      old: None,
+      new: Some(1),
+      text: format!("Subproject commit {id}"),
+    });
+  }
+  let (additions, deletions) = (usize::from(new.is_some()), usize::from(old.is_some()));
+  Content {
+    hunks: vec![Hunk {
+      id: String::new(),
+      header: render_header(header),
+      old_start: start_of(header.before_hunk_start, header.before_hunk_len),
+      old_count: header.before_hunk_len,
+      new_start: start_of(header.after_hunk_start, header.after_hunk_len),
+      new_count: header.after_hunk_len,
+      additions,
+      deletions,
+      lines,
+    }],
+    additions,
+    deletions,
+    truncated: false,
+    binary: false,
+  }
+}
+
 pub fn content(
   repo: &gix::Repository,
   cache: &mut gix::diff::blob::Platform,
@@ -162,6 +219,13 @@ pub fn content(
   cap: usize,
 ) -> Result<Content> {
   use gix::diff::blob::platform::prepare_diff::Operation;
+
+  let gitlink = |side: Option<(gix::ObjectId, EntryKind)>| {
+    side.is_some_and(|(_, kind)| kind == EntryKind::Commit)
+  };
+  if gitlink(change.old) || gitlink(change.new) {
+    return Ok(submodule_content(change));
+  }
 
   let null = gix::ObjectId::null(repo.object_hash());
   let old_path: &BStr = change.old_path.as_ref().map_or(change.path.as_bstr(), |p| p.as_bstr());
@@ -228,6 +292,45 @@ mod tests {
     assert_eq!(strip_terminator(b"line\r\n"), b"line\r");
     // A CR-separated file is one long line; that trailing CR is content.
     assert_eq!(strip_terminator(b"line\r"), b"line\r");
+  }
+
+  #[test]
+  fn a_submodule_bump_reads_the_way_git_prints_it() {
+    let id = |hex: &str| gix::ObjectId::from_hex(hex.as_bytes()).unwrap();
+    let old = id("9e1b59f0dd21ea998505798296a00f0660e8aa81");
+    let new = id("0000000000000000000000000000000000000001");
+    let change = Change {
+      path: "oauth2-server".into(),
+      old_path: None,
+      status: crate::model::FileStatus::Modified,
+      old: Some((old, EntryKind::Commit)),
+      new: Some((new, EntryKind::Commit)),
+    };
+
+    let content = submodule_content(&change);
+    let hunk = &content.hunks[0];
+    assert_eq!(hunk.header, "@@ -1 +1 @@");
+    assert_eq!(hunk.lines[0].text, format!("Subproject commit {old}"));
+    assert_eq!(hunk.lines[1].text, format!("Subproject commit {new}"));
+    assert_eq!((content.additions, content.deletions), (1, 1));
+  }
+
+  #[test]
+  fn a_removed_submodule_keeps_the_deleted_side_only() {
+    let old = gix::ObjectId::from_hex(b"9e1b59f0dd21ea998505798296a00f0660e8aa81").unwrap();
+    let change = Change {
+      path: "oauth2-server".into(),
+      old_path: None,
+      status: crate::model::FileStatus::Deleted,
+      old: Some((old, EntryKind::Commit)),
+      new: None,
+    };
+
+    let content = submodule_content(&change);
+    let hunk = &content.hunks[0];
+    assert_eq!(hunk.header, "@@ -1 +0,0 @@");
+    assert_eq!((hunk.old_start, hunk.old_count, hunk.new_start, hunk.new_count), (1, 1, 0, 0));
+    assert_eq!(hunk.lines.len(), 1);
   }
 
   #[test]

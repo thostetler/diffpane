@@ -20,7 +20,14 @@ meta.json       generated  scope + repo info
 hunks.json      generated  parsed diff
 review.json     authored   optional narrative, supplied with --review
 comments.json   mutable    written by the UI via the API
+.lock           runtime    held for the run's lifetime
 ```
+
+A rerun on the same branch the same day reuses the directory on purpose, so
+its comments survive. Two runs open at once must not: each holds `.lock` for
+as long as it serves, and a run that finds the lock taken moves to
+`<slug>-2`, `<slug>-3`, and so on. The lock is an OS advisory lock, released
+on exit or on a crash, so it never goes stale.
 
 The UI is `ui/`, compiled into the binary. `index.html` is served at `/`,
 everything else in `ui/` is served verbatim under `/assets/<name>`; setting

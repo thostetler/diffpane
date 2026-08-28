@@ -5,6 +5,7 @@
 //! the directory name — two checkouts can share a basename.
 
 use std::fs;
+use std::fs::File;
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result, bail};
@@ -16,6 +17,10 @@ use sha2::{Digest, Sha256};
 use crate::model::{Hunks, Meta, Review, ReviewState};
 
 const SLUG_MAX: usize = 48;
+const LOCK_FILE: &str = ".lock";
+
+/// How many suffixed directories to try before deciding something is wrong.
+const SESSION_ATTEMPTS: usize = 20;
 
 pub fn cache_root() -> PathBuf {
   let base = match std::env::var("XDG_CACHE_HOME") {
@@ -80,23 +85,62 @@ pub fn read_json<T: DeserializeOwned>(path: &Path) -> Result<Option<T>> {
   Ok(Some(parsed))
 }
 
+/// Takes the directory's advisory lock, or `None` if another process holds it.
+///
+/// An OS lock rather than a pid file: it is released when the process dies, so
+/// a crashed or killed run never leaves a stale lock for the next one to
+/// puzzle over.
+fn take_lock(path: &Path) -> Result<Option<File>> {
+  let file = File::create(path).with_context(|| format!("create {}", path.display()))?;
+  match file.try_lock() {
+    Ok(()) => Ok(Some(file)),
+    Err(fs::TryLockError::WouldBlock) => Ok(None),
+    Err(fs::TryLockError::Error(error)) => {
+      Err(error).with_context(|| format!("lock {}", path.display()))
+    }
+  }
+}
+
 pub struct Session {
   pub dir: PathBuf,
+  /// Held for as long as the session is, and released by the OS on exit.
+  _lock: Option<File>,
 }
 
 impl Session {
   pub fn new(dir: PathBuf) -> Self {
-    Self { dir }
+    Self { dir, _lock: None }
   }
 
   pub fn create(repo_root: &Path, slug: &str) -> Result<Self> {
     Self::create_in(&cache_root(), repo_root, slug)
   }
 
+  /// Reusing the directory on a *re*run is deliberate — see `clear_previous_run`
+  /// — but two runs open at once is a different thing: the second resets
+  /// `comments.json`, drops `review.json` and rewrites `hunks.json` while the
+  /// first's server is still serving from them, so the first prints the
+  /// second's diff and loses whatever was being typed. Each run holds the
+  /// directory's lock and steps to a suffixed one when it is already taken.
   pub fn create_in(cache: &Path, repo_root: &Path, slug: &str) -> Result<Self> {
-    let dir = cache.join(fingerprint(repo_root)).join(slug);
-    fs::create_dir_all(&dir).with_context(|| format!("create {}", dir.display()))?;
-    Ok(Self::new(dir))
+    let base = cache.join(fingerprint(repo_root));
+    for attempt in 1..=SESSION_ATTEMPTS {
+      let dir = match attempt {
+        1 => base.join(slug),
+        n => base.join(format!("{slug}-{n}")),
+      };
+      fs::create_dir_all(&dir).with_context(|| format!("create {}", dir.display()))?;
+      if let Some(lock) = take_lock(&dir.join(LOCK_FILE))? {
+        return Ok(Self { dir, _lock: Some(lock) });
+      }
+    }
+    bail!("{SESSION_ATTEMPTS} reviews of {slug} are already open under {}", base.display())
+  }
+
+  /// The directory's name, which is the slug this run actually got — not
+  /// always the one it asked for, if a concurrent run held that one.
+  pub fn slug(&self) -> String {
+    self.dir.file_name().map_or_else(String::new, |name| name.to_string_lossy().into_owned())
   }
 
   pub fn meta_path(&self) -> PathBuf {
@@ -212,6 +256,34 @@ mod tests {
     state.submitted_at = Some(now_iso());
     session.save_state(&state).unwrap();
     assert!(session.state().unwrap().submitted);
+  }
+
+  #[test]
+  fn a_concurrent_run_gets_a_directory_of_its_own() {
+    // The second run used to reset comments.json and rewrite hunks.json under
+    // the first run's live server, which then reported the wrong diff.
+    let temp = tempfile::tempdir().unwrap();
+    let repo = Path::new("/repo/thing");
+    let first = Session::create_in(temp.path(), repo, "2026-08-28-x").unwrap();
+    let second = Session::create_in(temp.path(), repo, "2026-08-28-x").unwrap();
+
+    assert_eq!(first.slug(), "2026-08-28-x");
+    assert_eq!(second.slug(), "2026-08-28-x-2");
+    assert_ne!(first.dir, second.dir);
+  }
+
+  #[test]
+  fn a_finished_run_hands_its_directory_back() {
+    // Reuse on rerun is the point of the naming: same branch, same day, same
+    // comments. Only an *open* run may push the next one aside.
+    let temp = tempfile::tempdir().unwrap();
+    let repo = Path::new("/repo/thing");
+    let first = Session::create_in(temp.path(), repo, "2026-08-28-x").unwrap();
+    let dir = first.dir.clone();
+    drop(first);
+
+    let again = Session::create_in(temp.path(), repo, "2026-08-28-x").unwrap();
+    assert_eq!(again.dir, dir);
   }
 
   #[test]

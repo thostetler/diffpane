@@ -91,8 +91,12 @@ pub fn build_session(repo: &gix::Repository, options: &Options) -> Result<Option
   }
 
   let title = options.title.clone();
-  let slug = format!("{}-{}", today(), slugify(title.as_deref().unwrap_or(&resolved.head)));
-  let session = Session::create(&root, &slug)?;
+  let wanted = format!("{}-{}", today(), slugify(title.as_deref().unwrap_or(&resolved.head)));
+  let session = Session::create(&root, &wanted)?;
+  // Not `wanted`: a concurrent run on the same branch pushes this one into a
+  // suffixed directory, and `meta.slug` names the directory the report and the
+  // UI are reading.
+  let slug = session.slug();
   let meta = Meta {
     repo: root
       .file_name()

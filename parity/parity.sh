@@ -22,11 +22,11 @@ fail=0
 # Ask cargo where the build landed: CARGO_TARGET_DIR moves it, and assuming
 # `target/release` would spawn a binary that is not there.
 build() {
-  cargo build --release --bin dump-hunks -q --manifest-path "$manifest"
+  cargo build --release --example dump-hunks -q --manifest-path "$manifest"
   local target
   target=$(cargo metadata --no-deps --format-version 1 --manifest-path "$manifest" |
     jq -r .target_directory)
-  dump_hunks=$target/release/dump-hunks
+  dump_hunks=$target/release/examples/dump-hunks
 }
 
 golden_file() { # $1 label

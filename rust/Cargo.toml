@@ -1,0 +1,14 @@
+[package]
+name = "diffpane"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.92"
+license = "MIT"
+description = "Review a git diff in your browser, comment on the lines, hand the feedback back to your agent."
+repository = "https://github.com/thostetler/diffpane"
+
+[dependencies]
+anyhow = "1.0.104"
+gix = { version = "0.87.1", features = ["blob-diff", "status", "attributes", "worktree-mutation", "dirwalk"] }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"

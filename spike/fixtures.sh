@@ -2,13 +2,19 @@
 # Build a fixture repo exercising every diff shape diffpane has to survive.
 #
 #   fixtures.sh working   <dir>   changes left uncommitted (index vs worktree)
+#   fixtures.sh staged    <dir>   changes staged, not committed (tree vs index)
 #   fixtures.sh committed <dir>   changes committed on top of base (tree vs tree)
 #
-# Both modes apply the same edits, so the two scopes are directly comparable.
+# Every mode applies the same edits, so the scopes are directly comparable.
 set -euo pipefail
 
-mode=${1:?usage: fixtures.sh <working|committed> <dir>}
-dir=${2:?usage: fixtures.sh <working|committed> <dir>}
+mode=${1:?usage: fixtures.sh <working|staged|committed> <dir>}
+dir=${2:?usage: fixtures.sh <working|staged|committed> <dir>}
+
+case $mode in
+  working | staged | committed) ;;
+  *) echo "usage: fixtures.sh <working|staged|committed> <dir>" >&2; exit 2 ;;
+esac
 
 rm -rf "$dir"
 mkdir -p "$dir"
@@ -233,19 +239,27 @@ EOF
 
 apply_edits
 
-if [ "$mode" = committed ]; then
-  git add -A
-  git commit -qm 'edits'
-  {
-    echo "base=$base"
-    echo "head=$(git rev-parse HEAD)"
-    echo "merge=${merge:-}"
-  } >FIXTURE_REFS
-else
-  # `git diff` with no args is index vs worktree. `git mv` and `git rm` stage,
-  # so unstage everything to put the whole change set in the worktree.
-  git reset -q
-  echo "base=$base" >FIXTURE_REFS
-fi
+case $mode in
+  committed)
+    git add -A
+    git commit -qm 'edits'
+    {
+      echo "base=$base"
+      echo "head=$(git rev-parse HEAD)"
+      echo "merge=${merge:-}"
+    } >FIXTURE_REFS
+    ;;
+  staged)
+    # `git diff --cached` is HEAD vs index, so every edit has to be staged.
+    git add -A
+    echo "base=$base" >FIXTURE_REFS
+    ;;
+  working)
+    # `git diff` with no args is index vs worktree. `git mv` and `git rm` stage,
+    # so unstage everything to put the whole change set in the worktree.
+    git reset -q
+    echo "base=$base" >FIXTURE_REFS
+    ;;
+esac
 
 echo "$dir"

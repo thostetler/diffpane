@@ -9,17 +9,8 @@ use gix::object::tree::EntryKind;
 use gix::status::index_worktree::Item;
 use gix::status::plumbing::index_as_worktree::{Change as WtChange, EntryStatus};
 
-use super::Change;
+use super::{Change, entry_kind};
 use crate::model::FileStatus;
-
-fn entry_kind(mode: gix::index::entry::Mode) -> EntryKind {
-  use gix::index::entry::Mode;
-  match mode {
-    Mode::SYMLINK => EntryKind::Link,
-    m if m.contains(Mode::FILE_EXECUTABLE) => EntryKind::BlobExecutable,
-    _ => EntryKind::Blob,
-  }
-}
 
 pub fn changes(repo: &gix::Repository) -> Result<Vec<Change>> {
   let mut changes = Vec::new();

@@ -40,6 +40,10 @@ Options
   -h, --help         show this
   -v, --version      show version
 
+Agent setup
+  --install-skill    install the Claude Code skill, then exit
+  --skill-dir <dir>  where to install it (default ~/.claude/skills)
+
 Exit codes
   0  approved (or nothing to review)   2  abandoned / timed out
   1  changes requested                 3  error
@@ -62,6 +66,7 @@ function selectScope(values: Record<string, unknown>): Scope {
 
 export type ParseResult =
   | { kind: 'options'; options: Options }
+  | { kind: 'install-skill'; skillDir?: string }
   | { kind: 'help' }
   | { kind: 'version' };
 
@@ -82,6 +87,8 @@ export function parseOptions(argv: string[]): ParseResult {
       port: { type: 'string' },
       'no-open': { type: 'boolean' },
       timeout: { type: 'string' },
+      'install-skill': { type: 'boolean' },
+      'skill-dir': { type: 'string' },
       help: { type: 'boolean', short: 'h' },
       version: { type: 'boolean', short: 'v' },
     },
@@ -89,6 +96,10 @@ export function parseOptions(argv: string[]): ParseResult {
 
   if (values.help === true) return { kind: 'help' };
   if (values.version === true) return { kind: 'version' };
+  if (values['install-skill'] === true) {
+    const skillDir = values['skill-dir'];
+    return skillDir === undefined ? { kind: 'install-skill' } : { kind: 'install-skill', skillDir };
+  }
 
   const exclusive = ([
     ['range', values.range],

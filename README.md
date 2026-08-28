@@ -75,6 +75,29 @@ diffpane --staged || { echo "review not clean"; exit 1; }
 
 ## Driving it from an agent
 
+This is what `diffpane` is for. On its own it shows you a diff in file order,
+which is nobody's reading order; driven by the agent that wrote the code, it
+shows you a diff in *chapters*, each one explaining what it is and why.
+
+### Claude Code
+
+```sh
+diffpane --install-skill
+```
+
+That writes a skill to `~/.claude/skills/diffpane/`. Restart Claude Code and
+review anything with:
+
+```
+/diffpane
+```
+
+The agent writes the chapter narrative, serves the diff, waits for you, and then
+works through your comments — answering questions before editing, and reporting
+what it fixed, answered or skipped. `--skill-dir` puts it somewhere else.
+
+### Any other agent
+
 Run it with `--json` and read stdout:
 
 ```sh

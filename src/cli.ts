@@ -5,6 +5,7 @@ import { resolve } from 'node:path';
 import { parseOptions, USAGE, type Options } from './args.ts';
 import { assembleDiff, computeTotals } from './assemble.ts';
 import { currentBranch, repoRoot, resolveScope } from './git.ts';
+import { installSkill } from './install-skill.ts';
 import { openBrowser } from './open-browser.ts';
 import { buildJson, buildMarkdown, outcomeOf, type Outcome } from './report.ts';
 import { Session, emptyState, nowIso, slugify, writeJson } from './session.ts';
@@ -134,6 +135,12 @@ async function main(): Promise<number> {
   }
   if (parsed.kind === 'version') {
     process.stdout.write(`${version()}\n`);
+    return 0;
+  }
+  if (parsed.kind === 'install-skill') {
+    const { path, replaced } = installSkill(parsed.skillDir);
+    process.stdout.write(`${replaced ? 'replaced' : 'wrote'} ${path}\n`);
+    process.stdout.write('restart Claude Code, then run /diffpane\n');
     return 0;
   }
   return run(parsed.options);

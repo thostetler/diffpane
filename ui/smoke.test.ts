@@ -212,13 +212,22 @@ test('a saved comment is anchored under its line and counted in the sidebar', as
   await row.locator('.add-comment').click();
   await page.locator('.composer .seg.question').click();
   await page.locator('.composer textarea').fill('why this way?');
-  await page.locator('.composer button[type="submit"]').click();
-  await page.waitForSelector('.comment-box.question');
 
-  const sibling = await page
-    .locator(`[id="${rowId}"]`)
-    .evaluate((el) => el.nextElementSibling?.className ?? 'nothing');
-  assert.match(sibling, /comment-box/, `expected a comment under ${rowId}, found: ${sibling}`);
+  // Wait on the save itself. The fixture already ships a question comment, so
+  // waiting for `.comment-box.question` matches at load and waits for nothing.
+  const saved = page.waitForResponse(
+    (response) => response.url().endsWith('/api/comments') && response.request().method() === 'POST',
+  );
+  await page.locator('.composer button[type="submit"]').click();
+  await saved;
+  await page.waitForSelector('.composer', { state: 'detached' });
+
+  const under = await page.locator(`[id="${rowId}"]`).evaluate((el) => ({
+    class: el.nextElementSibling?.className ?? 'nothing',
+    text: el.nextElementSibling?.textContent ?? '',
+  }));
+  assert.match(under.class, /comment-box question/, `under ${rowId}: ${under.class}`);
+  assert.match(under.text, /why this way\?/, 'the anchored comment is not the one just saved');
   assert.match(
     (await page.locator(`.nav-item[data-chapter="${chapter}"]`).getAttribute('aria-label')) ?? '',
     /open comments?$/,

@@ -207,7 +207,7 @@ pub fn parse(argv: Vec<String>) -> Result<Parsed> {
   if let Some(value) = port {
     let parsed = positive_int(&value, "port")?;
     if parsed > u64::from(u16::MAX) {
-      bail!("--port must be a number >= 0");
+      bail!("--port must be a number between 0 and {}", u16::MAX);
     }
     options.port = parsed as u16;
   }

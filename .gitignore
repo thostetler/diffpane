@@ -1,8 +1,8 @@
 node_modules/
 dist/
 *.tgz
-# Cloned fixture repos and build artefacts; ~700MB. The spike's sources are
-# tracked — they are the port's reference implementation.
+# Cloned fixture repos and build artefacts; ~700MB. Nothing builds under
+# spike/ any more, but old checkouts still have the directory.
 spike/target/
 spike/repos/
 rust/target/

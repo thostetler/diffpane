@@ -14,13 +14,13 @@ here=$(cd "$(dirname "$0")" && pwd)
 root=$(cd "$here/.." && pwd)
 work=${PARITY_DIR:-$here/repos}
 golden_dir=$here/golden
-manifest=$root/server/Cargo.toml
+manifest=$root/Cargo.toml
 
 pass=0
 fail=0
 
 # Ask cargo where the build landed: CARGO_TARGET_DIR moves it, and assuming
-# `server/target` would spawn a binary that is not there.
+# `target/release` would spawn a binary that is not there.
 build() {
   cargo build --release --bin dump-hunks -q --manifest-path "$manifest"
   local target

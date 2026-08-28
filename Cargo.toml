@@ -6,6 +6,31 @@ rust-version = "1.92"
 license = "MIT"
 description = "Review a git diff in your browser, comment on the lines, hand the feedback back to your agent."
 repository = "https://github.com/thostetler/diffpane"
+homepage = "https://github.com/thostetler/diffpane"
+readme = "README.md"
+keywords = ["git", "diff", "review", "cli", "agent"]
+categories = ["command-line-utilities", "development-tools"]
+# The manifest sits at the repo root because the binary embeds `ui/` and
+# `skills/`, and cargo only packages files under the package root — a manifest
+# in `server/` publishes a crate that cannot build.
+exclude = ["parity/", "dev/", "node_modules/", "assets/", "*.tgz"]
+
+[lib]
+name = "diffpane"
+path = "server/src/lib.rs"
+
+[[bin]]
+name = "diffpane"
+path = "server/src/main.rs"
+
+# The parity harness dumps the diff layer's JSON; not part of the CLI surface.
+[[bin]]
+name = "dump-hunks"
+path = "server/src/bin/dump-hunks.rs"
+
+[[example]]
+name = "serve-fixture"
+path = "server/examples/serve-fixture.rs"
 
 [dependencies]
 anyhow = "1.0.104"

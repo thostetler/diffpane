@@ -80,7 +80,7 @@ mod tests {
   use super::*;
 
   fn ui() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).parent().expect("repo root").join("ui")
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("ui")
   }
 
   #[test]

@@ -15,7 +15,7 @@ Not packaged yet — build it from source:
 
 ```sh
 git clone https://github.com/thostetler/diffpane
-cargo install --path diffpane/server
+cd diffpane && cargo install --path .
 ```
 
 Requires Rust 1.92+ and `git`. Prebuilt binaries and `npx diffpane` are the
@@ -176,7 +176,6 @@ non-loopback `Host` are rejected, and mutations must be JSON.
 ## Development
 
 ```sh
-cd server
 cargo test
 cargo clippy --all-targets -- -D warnings
 cargo fmt --check
@@ -196,6 +195,9 @@ pnpm typecheck
 step, compiled into the binary. The JSON between them is frozen — snake_case,
 shapes in `server/src/model.rs`. `DIFFPANE_UI_DIR=ui` serves `ui/` from disk so
 UI edits do not need a rebuild.
+
+The manifest is at the repo root rather than in `server/`: the binary embeds
+`ui/` and `skills/`, and cargo only packages what sits under it.
 
 `parity/parity.sh check-golden` asserts the diff output still matches
 `parity/golden/` — frozen from the TypeScript implementation's parity run,

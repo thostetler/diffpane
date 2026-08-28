@@ -8,20 +8,18 @@ on:
 jobs:
   server:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: server
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy, rustfmt
       - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: server
       - run: cargo fmt --check
       - run: cargo clippy --all-targets -- -D warnings
       - run: cargo test
+      # The crate embeds ui/ and skills/, which cargo only packages if they sit
+      # under the manifest. Publishing is the wrong place to find that out.
+      - run: cargo package
 
   # What the TypeScript's parity run signed off on, frozen: the diff layer's
   # output over the fixture matrix, byte for byte against `parity/golden/`.
@@ -31,8 +29,6 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: server
       - run: ./parity/parity.sh check-golden
 
   ui:
@@ -41,8 +37,6 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: server
       - uses: pnpm/action-setup@v4
         with:
           version: 10

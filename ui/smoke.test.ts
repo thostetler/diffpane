@@ -30,10 +30,10 @@ interface State {
 }
 
 const ROOT = join(import.meta.dirname, '..');
-const MANIFEST = join(ROOT, 'server', 'Cargo.toml');
+const MANIFEST = join(ROOT, 'Cargo.toml');
 
 /**
- * Where cargo actually puts the build. Assuming `server/target` meant that on a
+ * Where cargo actually puts the build. Assuming `target/debug` meant that on a
  * machine with CARGO_TARGET_DIR set the build succeeded, the spawn hit ENOENT,
  * and the suite blamed the server for exiting without an address.
  */

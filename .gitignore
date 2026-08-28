@@ -5,4 +5,4 @@ dist/
 dev/
 # Cloned fixture repos, ~700MB when the matrix has run.
 parity/repos/
-server/target/
+target/

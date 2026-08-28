@@ -39,7 +39,7 @@ pub fn ui_dir() -> PathBuf {
   }
   let above =
     exe.as_deref().and_then(Path::parent).and_then(Path::parent).map(|dir| dir.join("ui"));
-  above.unwrap_or_else(|| PathBuf::from("ui"))
+  above.filter(|dir| dir.is_dir()).unwrap_or_else(|| PathBuf::from("ui"))
 }
 
 fn totals(files: &[FileDiff]) -> Totals {

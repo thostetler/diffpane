@@ -1,5 +1,8 @@
 node_modules/
 dist/
 *.tgz
-# Throwaway parity harness for the Rust port; 700MB of cloned fixture repos.
-spike/
+# Cloned fixture repos and build artefacts; ~700MB. The spike's sources are
+# tracked — they are the port's reference implementation.
+spike/target/
+spike/repos/
+rust/target/

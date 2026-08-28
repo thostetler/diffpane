@@ -20,6 +20,7 @@ const CONTENT_TYPES: Record<string, string> = {
   '.css': 'text/css; charset=utf-8',
   '.json': 'application/json; charset=utf-8',
   '.svg': 'image/svg+xml',
+  '.png': 'image/png',
   '.ico': 'image/x-icon',
 };
 
@@ -105,8 +106,10 @@ class RequestHandler {
     if (request.method !== 'GET' && request.method !== 'HEAD') {
       throw new ApiError('method not allowed', 405);
     }
+    // Served before the token check, as an empty 204 was: the browser asks for
+    // this at the root with no cookie, and an icon is not the diff.
     if (url.pathname === '/favicon.ico') {
-      send(response, 204, Buffer.alloc(0), 'image/x-icon');
+      send(response, 200, readFileSync(resolve(UI_DIR, 'favicon.ico')), 'image/x-icon');
       return;
     }
     // The page is gated on the token so a stray tab cannot read the diff. The

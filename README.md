@@ -1,4 +1,4 @@
-# diffpane
+![diffpane](docs/banner.png)
 
 Review a git diff in your browser, comment on the lines, hand the feedback back.
 

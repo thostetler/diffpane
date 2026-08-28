@@ -72,6 +72,13 @@ test('serves the page only with a valid token', async () => {
   assert.equal((await fetch(`${base}/?t=${TOKEN}`)).status, 200);
 });
 
+test('serves the favicon at the root without a token', async () => {
+  const response = await fetch(`${base}/favicon.ico`);
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('content-type'), 'image/x-icon');
+  assert.ok((await response.arrayBuffer()).byteLength > 0);
+});
+
 test('the page hands out a cookie so the browser can fetch its own assets', async () => {
   const page = await fetch(`${base}/?t=${TOKEN}`);
   const cookie = page.headers.get('set-cookie') ?? '';

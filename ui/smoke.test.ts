@@ -203,6 +203,11 @@ test('the outcome control shows the verdict a submit would send', async () => {
 
 test('a saved comment is anchored under its line and counted in the sidebar', async () => {
   const row = page.locator('.diff-row.add').first();
+  // Pin the row up front. Saving re-renders, so re-resolving "the first add
+  // row" afterwards asserts about whatever is first *now* — which is not
+  // necessarily the line the comment was left on.
+  const rowId = await row.getAttribute('id');
+  const chapter = await row.getAttribute('data-chapter');
   await row.click();
   await row.locator('.add-comment').click();
   await page.locator('.composer .seg.question').click();
@@ -210,12 +215,10 @@ test('a saved comment is anchored under its line and counted in the sidebar', as
   await page.locator('.composer button[type="submit"]').click();
   await page.waitForSelector('.comment-box.question');
 
-  const chapter = await row.getAttribute('data-chapter');
-  assert.equal(
-    await row.evaluate((el) => el.nextElementSibling?.classList.contains('comment-box')),
-    true,
-    'comment did not render under its own line',
-  );
+  const sibling = await page
+    .locator(`[id="${rowId}"]`)
+    .evaluate((el) => el.nextElementSibling?.className ?? 'nothing');
+  assert.match(sibling, /comment-box/, `expected a comment under ${rowId}, found: ${sibling}`);
   assert.match(
     (await page.locator(`.nav-item[data-chapter="${chapter}"]`).getAttribute('aria-label')) ?? '',
     /open comments?$/,

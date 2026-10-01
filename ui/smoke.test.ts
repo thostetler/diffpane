@@ -54,6 +54,9 @@ const FIXTURE = JSON.parse(
 /** The fixture ships a comment on this file; several cases depend on that. */
 const COMMENTED_FILE = 'src/search/cache.ts';
 
+/** Added, so seedFolds would collapse it — but it carries a line note. */
+const ANNOTATED_FILE = 'src/search/cache.test.ts';
+
 let dir: string;
 let server: ChildProcess;
 let browser: Browser;
@@ -209,6 +212,13 @@ test('collapse all keeps files that carry a comment expanded', async () => {
   );
 });
 
+test('collapse all keeps a file with only a line note expanded', async () => {
+  await page.locator('[data-fk="fold-all"]').click();
+  const annotated = page.locator(`.file[data-file="${ANNOTATED_FILE}"] .file-toggle`).first();
+  assert.equal(await annotated.getAttribute('aria-expanded'), 'true');
+  await page.locator('[data-fk="fold-all"]').click();
+});
+
 test('the fold control toggles its own label', async () => {
   const button = page.locator('[data-fk="fold-all"]');
   assert.equal(await button.textContent(), 'Collapse all');
@@ -286,6 +296,47 @@ test('a saved comment is anchored under its line and counted in the sidebar', as
     (await page.locator(`.nav-item[data-chapter="${chapter}"]`).getAttribute('aria-label')) ?? '',
     /open comments?$/,
   );
+});
+
+test('a flag opens itself, a note waits to be asked', async () => {
+  const flag = page.locator('.note-chip.flag').first();
+  assert.equal(await flag.getAttribute('aria-expanded'), 'true');
+  assert.equal(await page.locator('.line-note.flag').count(), 1);
+
+  const chip = page.locator('.note-chip.note').first();
+  assert.equal(await chip.getAttribute('aria-expanded'), 'false');
+  const panelId = await chip.getAttribute('aria-controls');
+  assert.equal(await page.locator(`[id="${panelId}"]`).count(), 0, 'a collapsed note took up space');
+
+  await chip.click();
+  assert.equal(await chip.getAttribute('aria-expanded'), 'true');
+  // The bubble points at a line by being the thing directly under it.
+  const anchored = await page.locator(`[id="${panelId}"]`).evaluate((el) => ({
+    previous: el.previousElementSibling?.className ?? 'nothing',
+    contains: el.previousElementSibling?.contains(document.querySelector('[aria-controls="' + el.id + '"]')),
+  }));
+  assert.match(anchored.previous, /diff-row/, `note sits under ${anchored.previous}`);
+  assert.ok(anchored.contains, 'the note is not under the row whose chip opened it');
+});
+
+test('t toggles the note on the focused line and keeps focus there', async () => {
+  const row = page.locator('.diff-row:has(.note-chip.note)').first();
+  const rowId = await row.getAttribute('id');
+  await row.click();
+  const chip = page.locator(`[id="${rowId}"] .note-chip`);
+  const panelId = await chip.getAttribute('aria-controls');
+
+  await page.keyboard.press('t');
+  assert.equal(await page.locator(`[id="${panelId}"]`).count(), 1);
+  assert.equal(await page.evaluate(() => document.activeElement?.id), rowId);
+
+  await page.keyboard.press('t');
+  assert.equal(await page.locator(`[id="${panelId}"]`).count(), 0);
+});
+
+test('an annotated file opens even when its kind would collapse it', async () => {
+  const toggle = page.locator(`.file[data-file="${ANNOTATED_FILE}"] .file-toggle`).first();
+  assert.equal(await toggle.getAttribute('aria-expanded'), 'true');
 });
 
 test('the help overlay survives a re-render and restores focus', async () => {

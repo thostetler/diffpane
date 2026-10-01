@@ -26,6 +26,8 @@ const state = {
   hunkFile: new Map(),
   chapters: [],
   comments: [],
+  lineNotes: new Map(),
+  expandedNotes: new Set(),
   collapsedFiles: new Set(),
   expandedHunks: new Set(),
   focusedLine: null,
@@ -100,7 +102,7 @@ async function fetchJson(path, options) {
 function setData(payload) {
   // A missing narrative is a notice, not a title: "Review unavailable" in the
   // <h1> reads as the name of the thing being reviewed.
-  payload.review ||= { missing: true, chapters: [], file_notes: {} };
+  payload.review ||= { missing: true, chapters: [], file_notes: {}, line_notes: [] };
   payload.comments ||= { comments: [], progress: {}, overall: { verdict: "ok", body: "" }, submitted: false, submitted_at: null };
   payload.comments.comments ||= [];
   payload.comments.progress ||= {};
@@ -140,13 +142,46 @@ function indexData() {
   }
   chapters.push({ id: "unsorted", title: "Everything else", intent: "Hunks not claimed by review.json.", why: "", hunks: unclaimed, files: zeroHunkFiles, size: "", flags: [], synthetic: true });
   state.chapters = chapters;
+  indexLineNotes();
 }
 
+// Agent annotations, keyed the way a rendered line asks for them. A flag opens
+// on load: it is the thing the agent wants read, and a chip nobody clicks says
+// nothing.
+function indexLineNotes() {
+  state.lineNotes.clear();
+  state.expandedNotes.clear();
+  for (const note of state.data.review?.line_notes || []) {
+    if (!state.hunksById.has(note.hunk)) continue;
+    const key = `${note.hunk}:${note.side}:${note.line}`;
+    state.lineNotes.set(key, note);
+    if (note.kind === "flag") state.expandedNotes.add(key);
+  }
+}
+
+function noteKeyOf(anchor) {
+  if (!anchor || anchor.kind !== "line") return "";
+  return `${anchor.hunk}:${anchor.side}:${anchor.line}`;
+}
+
+function annotatedFilePaths() {
+  const paths = new Set();
+  for (const key of state.lineNotes.keys()) {
+    const file = state.hunkFile.get(key.slice(0, key.indexOf(":")));
+    if (file) paths.add(file.path);
+  }
+  return paths;
+}
+
+// An annotated file opens like a commented one: the agent pinned something to a
+// line in it, and a chip hidden behind a collapsed file is a note nobody reads.
 function seedFolds() {
   const commentedFiles = commentedFilePaths();
+  const annotated = annotatedFilePaths();
   for (const file of state.data.hunks?.files || []) {
     const lineCount = (file.hunks || []).reduce((sum, hunk) => sum + (hunk.lines?.length || 0), 0);
-    if (!commentedFiles.has(file.path) && (file.noise || file.status === "added" || file.status === "deleted" || lineCount > 400)) {
+    const bulky = file.noise || file.status === "added" || file.status === "deleted" || lineCount > 400;
+    if (bulky && !commentedFiles.has(file.path) && !annotated.has(file.path)) {
       state.collapsedFiles.add(file.path);
     }
   }
@@ -414,8 +449,11 @@ function renderHunk(chapter, file, hunk) {
   const wrap = $("div", { class: "hunk", id: `hunk-${hunk.id}`, dataset: { hunk: hunk.id, chapter: chapter.id, file: file.path } });
   wrap.append($("div", { class: "hunk-header", text: hunk.header || hunk.id }));
   const lines = hunk.lines || [];
-  const hasComment = lines.some(line => commentsForAnchor(lineAnchor(file, hunk, line, chapter.id)).length);
-  const shouldFold = lines.length > 40 && !state.expandedHunks.has(hunk.id) && !hasComment;
+  const anchors = lines.map(line => lineAnchor(file, hunk, line, chapter.id));
+  const hasComment = anchors.some(anchor => commentsForAnchor(anchor).length);
+  // Folding the middle would hide the very line the agent annotated.
+  const hasNote = anchors.some(anchor => state.lineNotes.has(noteKeyOf(anchor)));
+  const shouldFold = lines.length > 40 && !state.expandedHunks.has(hunk.id) && !hasComment && !hasNote;
   const visible = shouldFold ? [...lines.slice(0, 8), ...lines.slice(-8)] : lines;
   for (let idx = 0; idx < visible.length; idx++) {
     if (shouldFold && idx === 8) {
@@ -442,6 +480,9 @@ function appendLine(parent, chapter, file, hunk, line) {
   const label = `${LINE_KIND[line.type] ?? line.type} line ${line.new ?? line.old ?? ""}`;
   const tabbable = state.focusedLine === key;
   const open = event => { event.stopPropagation(); openComposer(anchor, key); };
+  const noteKey = noteKeyOf(anchor);
+  const note = state.lineNotes.get(noteKey);
+  const panelId = `note-${hunk.id}-${line.i}`;
   const row = $("div", {
     class: `diff-row ${line.type}`,
     id: `line-${hunk.id}-${line.i}`,
@@ -467,11 +508,47 @@ function appendLine(parent, chapter, file, hunk, line) {
     }),
     // Colour alone must not carry add/del.
     $("span", { class: "marker", "aria-hidden": "true", text: LINE_MARKER[line.type] ?? " " }),
-    $("div", { class: "code", text: line.text ?? "" })
+    $("div", { class: "code", text: line.text ?? "" }),
+    // Always present, note or not: the rail is a grid column, and a missing
+    // cell would shift the row it is missing from.
+    $("div", { class: "note-rail" }, note ? renderNoteChip(note, noteKey, panelId, label) : [])
   ]);
   parent.append(row);
+  if (note && state.expandedNotes.has(noteKey)) parent.append(renderNote(note, panelId));
   if (state.composer?.key === key) parent.append(renderComposer());
   for (const comment of commentsForAnchor(anchor)) parent.append(renderComment(comment));
+}
+
+const NOTE_GLYPH = { note: "◆", flag: "▲" };
+const NOTE_LABEL = { note: "note", flag: "flag" };
+
+function renderNoteChip(note, key, panelId, lineLabel) {
+  const kind = NOTE_LABEL[note.kind] || "note";
+  const expanded = state.expandedNotes.has(key);
+  return $("button", {
+    type: "button",
+    class: `note-chip ${note.kind === "flag" ? "flag" : "note"}`,
+    text: NOTE_GLYPH[note.kind] || NOTE_GLYPH.note,
+    "aria-label": `${expanded ? "Hide" : "Show"} agent ${kind} on ${lineLabel}`,
+    "aria-controls": panelId,
+    ariaExpanded: expanded,
+    dataset: { fk: `note:${key}` },
+    onClick: event => { event.stopPropagation(); toggleNote(key); }
+  });
+}
+
+function renderNote(note, panelId) {
+  const kind = NOTE_LABEL[note.kind] || "note";
+  return $("div", { class: `line-note ${note.kind === "flag" ? "flag" : "note"}`, id: panelId }, [
+    $("span", { class: "note-kind", text: kind }),
+    $("span", { class: "note-body", text: note.body || "" })
+  ]);
+}
+
+function toggleNote(key) {
+  if (state.expandedNotes.has(key)) state.expandedNotes.delete(key);
+  else state.expandedNotes.add(key);
+  render();
 }
 
 function lineAnchor(file, hunk, line, chapter) {
@@ -804,10 +881,11 @@ function setAllExpanded(expanded) {
   state.foldIntent = expanded ? "expanded" : "collapsed";
   state.collapsedFiles.clear();
   if (!expanded) {
-    // Contract §4: anything with a comment on it stays expanded.
+    // Contract §4: anything with a comment or an agent note on it stays expanded.
     const commented = commentedFilePaths();
+    const annotated = annotatedFilePaths();
     for (const file of state.data.hunks?.files || []) {
-      if (!commented.has(file.path)) state.collapsedFiles.add(file.path);
+      if (!commented.has(file.path) && !annotated.has(file.path)) state.collapsedFiles.add(file.path);
     }
   }
   if (expanded) {
@@ -879,6 +957,7 @@ function ensureHelp() {
       $("dt", { text: "j / k" }), $("dd", { text: "next / previous hunk" }),
       $("dt", { text: "n / p" }), $("dd", { text: "next / previous chapter" }),
       $("dt", { text: "c" }), $("dd", { text: "comment focused line" }),
+      $("dt", { text: "t" }), $("dd", { text: "show / hide the note on the focused line" }),
       $("dt", { text: "e" }), $("dd", { text: "expand / collapse focused file" }),
       $("dt", { text: "?" }), $("dd", { text: "toggle help" }),
       $("dt", { text: "Esc" }), $("dd", { text: "close" })
@@ -956,6 +1035,9 @@ document.addEventListener("keydown", event => {
     // Use the stored anchor: re-parsing the display key breaks on paths
     // containing a colon.
     openComposer(state.focusedAnchor, state.focusedLine);
+  } else if (event.key === "t" && state.lineNotes.has(noteKeyOf(state.focusedAnchor))) {
+    event.preventDefault();
+    toggleNote(noteKeyOf(state.focusedAnchor));
   } else if (event.key === "e" && state.focusedHunk) {
     event.preventDefault();
     const file = state.hunkFile.get(state.focusedHunk);

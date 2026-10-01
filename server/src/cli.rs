@@ -12,7 +12,7 @@ use tokio::sync::{mpsc, oneshot};
 
 use crate::args::Options;
 use crate::assets::Assets;
-use crate::model::{FileDiff, Hunks, Meta, Review, ReviewState, Totals};
+use crate::model::{FileDiff, Hunk, Hunks, LineNote, Meta, Review, ReviewState, Side, Totals};
 use crate::report::{Outcome, ReportInput, build_json, build_markdown, outcome_of};
 use crate::server::{AppState, bind, generate_token, serve};
 use crate::session::{Session, now_iso, slugify, write_json};
@@ -36,20 +36,77 @@ fn today() -> String {
   Timestamp::now().strftime("%Y-%m-%d").to_string()
 }
 
-/// Warns about chapters that point at hunk ids this diff does not have. Not an
-/// error: the narrative is the agent's, and a stale id costs the reader one
-/// chapter, not the review.
-fn install_review(session: &Session, file: &str, files: &[FileDiff]) -> Result<()> {
-  let body = std::fs::read_to_string(file).with_context(|| format!("read {file}"))?;
-  let review: Review = serde_json::from_str(&body).with_context(|| format!("parse {file}"))?;
-  let known: std::collections::BTreeSet<&str> =
-    files.iter().flat_map(|file| file.hunks.iter().map(|hunk| hunk.id.as_str())).collect();
+/// Chapters that point at a hunk id this diff does not have. Not an error: the
+/// narrative is the agent's, and a stale id costs the reader one chapter, not
+/// the review.
+fn stale_chapter_refs(review: &Review, files: &[FileDiff]) -> Vec<String> {
+  let hunks: std::collections::BTreeMap<&str, &Hunk> =
+    files.iter().flat_map(|file| file.hunks.iter().map(|hunk| (hunk.id.as_str(), hunk))).collect();
+  let mut warnings = Vec::new();
   for chapter in &review.chapters {
     for id in &chapter.hunks {
-      if !known.contains(id.as_str()) {
-        eprintln!("warning: chapter {} references unknown hunk {id}", chapter.id);
+      if !hunks.contains_key(id.as_str()) {
+        warnings.push(format!("chapter {} references unknown hunk {id}", chapter.id));
       }
     }
+  }
+  warnings
+}
+
+/// Keeps only the line notes this diff can actually render: a known hunk, a
+/// line that hunk carries, and an anchor no earlier note already claimed. The
+/// UI has one slot per anchor, so a second note there would either silently
+/// replace the first or inherit its expanded state — dropping it loudly here
+/// beats either.
+fn valid_line_notes(
+  review: &Review,
+  files: &[FileDiff],
+  warnings: &mut Vec<String>,
+) -> Vec<LineNote> {
+  let hunks: std::collections::BTreeMap<&str, &Hunk> =
+    files.iter().flat_map(|file| file.hunks.iter().map(|hunk| (hunk.id.as_str(), hunk))).collect();
+  let mut seen = std::collections::HashSet::new();
+  let mut kept = Vec::new();
+  for note in &review.line_notes {
+    let side = match note.side {
+      Side::Old => "old",
+      Side::New => "new",
+    };
+    let Some(hunk) = hunks.get(note.hunk.as_str()) else {
+      warnings.push(format!("line note references unknown hunk {}", note.hunk));
+      continue;
+    };
+    let anchored = hunk.lines.iter().any(|line| match note.side {
+      Side::Old => line.old == Some(note.line),
+      Side::New => line.new == Some(note.line),
+    });
+    if !anchored {
+      warnings.push(format!(
+        "line note anchors to {side} line {}, which is not in hunk {}; dropped",
+        note.line, note.hunk
+      ));
+      continue;
+    }
+    let key = format!("{}:{side}:{}", note.hunk, note.line);
+    if !seen.insert(key) {
+      warnings.push(format!(
+        "duplicate line note on {side} line {} in hunk {}; keeping the first",
+        note.line, note.hunk
+      ));
+      continue;
+    }
+    kept.push(note.clone());
+  }
+  kept
+}
+
+fn install_review(session: &Session, file: &str, files: &[FileDiff]) -> Result<()> {
+  let body = std::fs::read_to_string(file).with_context(|| format!("read {file}"))?;
+  let mut review: Review = serde_json::from_str(&body).with_context(|| format!("parse {file}"))?;
+  let mut warnings = stale_chapter_refs(&review, files);
+  review.line_notes = valid_line_notes(&review, files, &mut warnings);
+  for warning in warnings {
+    eprintln!("warning: {warning}");
   }
   write_json(&session.review_path(), &review)
 }
@@ -254,7 +311,7 @@ pub fn print_report(body: &str) {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::model::{Overall, Verdict};
+  use crate::model::{DiffLine, LineNote, LineType, NoteKind, Overall, Verdict};
 
   #[test]
   fn sums_the_totals_over_files() {
@@ -275,6 +332,86 @@ mod tests {
     assert_eq!(summed.files, 2);
     assert_eq!(summed.additions, 3);
     assert_eq!(summed.deletions, 5);
+  }
+
+  fn one_hunk_file() -> FileDiff {
+    let line = |i, kind, old, new| DiffLine { i, kind, old, new, text: String::new() };
+    FileDiff {
+      id: "f0".into(),
+      path: "a.ts".into(),
+      old_path: "a.ts".into(),
+      status: crate::model::FileStatus::Modified,
+      additions: 1,
+      deletions: 1,
+      binary: false,
+      noise: false,
+      language: None,
+      truncated: false,
+      hunks: vec![Hunk {
+        id: "f0h0".into(),
+        header: "@@ -7,1 +7,1 @@".into(),
+        old_start: 7,
+        old_count: 1,
+        new_start: 7,
+        new_count: 1,
+        additions: 1,
+        deletions: 1,
+        lines: vec![line(0, LineType::Del, Some(7), None), line(1, LineType::Add, None, Some(7))],
+      }],
+    }
+  }
+
+  fn note(hunk: &str, side: Side, line: u32) -> LineNote {
+    note_kind(hunk, side, line, NoteKind::Note)
+  }
+
+  fn note_kind(hunk: &str, side: Side, line: u32, kind: NoteKind) -> LineNote {
+    LineNote { hunk: hunk.into(), side, line, body: "why".into(), kind }
+  }
+
+  fn review_with(line_notes: Vec<LineNote>) -> Review {
+    Review { title: None, story: None, chapters: Vec::new(), file_notes: None, line_notes }
+  }
+
+  #[test]
+  fn an_anchored_line_note_warns_about_nothing_and_survives() {
+    let review = review_with(vec![note("f0h0", Side::New, 7), note("f0h0", Side::Old, 7)]);
+    let mut warnings = Vec::new();
+    let kept = valid_line_notes(&review, &[one_hunk_file()], &mut warnings);
+    assert!(warnings.is_empty(), "{warnings:?}");
+    assert_eq!(kept.len(), 2);
+  }
+
+  #[test]
+  fn a_line_note_that_renders_nowhere_warns_and_is_dropped() {
+    let review = review_with(vec![
+      note("f9h9", Side::New, 7),
+      note("f0h0", Side::New, 400),
+      // The deletion is on the old side; asking for new line 7 finds the
+      // addition, so the sides are not interchangeable.
+      note("f0h0", Side::Old, 999),
+    ]);
+    let mut warnings = Vec::new();
+    let kept = valid_line_notes(&review, &[one_hunk_file()], &mut warnings);
+    assert!(kept.is_empty(), "{kept:?}");
+    assert_eq!(warnings.len(), 3, "{warnings:?}");
+    assert!(warnings[0].contains("unknown hunk f9h9"), "{warnings:?}");
+    assert!(warnings[1].contains("new line 400"), "{warnings:?}");
+    assert!(warnings[2].contains("old line 999"), "{warnings:?}");
+  }
+
+  #[test]
+  fn a_duplicate_anchor_keeps_the_first_and_warns() {
+    let review = review_with(vec![
+      note_kind("f0h0", Side::New, 7, NoteKind::Flag),
+      note_kind("f0h0", Side::New, 7, NoteKind::Note),
+    ]);
+    let mut warnings = Vec::new();
+    let kept = valid_line_notes(&review, &[one_hunk_file()], &mut warnings);
+    assert_eq!(kept.len(), 1);
+    assert_eq!(kept[0].kind, NoteKind::Flag, "the first note on the anchor should survive");
+    assert_eq!(warnings.len(), 1, "{warnings:?}");
+    assert!(warnings[0].contains("duplicate line note"), "{warnings:?}");
   }
 
   #[test]
@@ -312,7 +449,13 @@ mod tests {
   fn a_rerun_without_review_drops_the_previous_narrative() {
     let state = ReviewState { submitted: true, ..ReviewState::default() };
     let (_temp, session) = seeded_session(&state);
-    let stale = Review { title: None, story: None, chapters: Vec::new(), file_notes: None };
+    let stale = Review {
+      title: None,
+      story: None,
+      chapters: Vec::new(),
+      file_notes: None,
+      line_notes: Vec::new(),
+    };
     write_json(&session.review_path(), &stale).unwrap();
 
     clear_previous_run(&session).unwrap();

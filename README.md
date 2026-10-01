@@ -89,8 +89,9 @@ Collapsed by default, with a one-line summary and an expand control:
 - hunks over 40 lines fold their middle, keeping head and tail
 - files over 400 diff lines
 
-Anything you have commented on auto-expands. `j`/`k` move by hunk, `n`/`p` by
-chapter, `c` comments on the focused line, `?` lists the shortcuts.
+Anything you have commented on or annotated auto-expands. `j`/`k` move by hunk,
+`n`/`p` by chapter, `c` comments on the focused line, `t` opens the note on it,
+`?` lists the shortcuts.
 
 ## Driving it from an agent
 
@@ -163,6 +164,30 @@ Each comment carries the file, the line, and the code it was pinned to.
 Hunk ids are `f<file>h<hunk>`, in the order the diff reports them. Unclaimed
 hunks land in a trailing "Everything else". Without `--review` the page is a
 plain file-ordered diff.
+
+### Line notes
+
+The same file can pin context to individual lines. Each note is a chip on the
+right-hand rail, level with its line; clicking it — or `t` on the focused line —
+drops the text under the line it belongs to, so a collapsed note costs no
+vertical space.
+
+```json
+{
+  "line_notes": [
+    { "hunk": "f0h1", "side": "new", "line": 73, "kind": "flag",
+      "body": "A cache hit returns before the freshness check below ever runs." },
+    { "hunk": "f0h1", "side": "old", "line": 42,
+      "body": "This return moved below the cache write." }
+  ]
+}
+```
+
+`side` picks which gutter `line` counts in: `old` for a removed line, `new` for
+an added or context one. `kind` is `note` (default, collapsed) or `flag`, which
+renders warm and opens on load. A note keeps its file expanded and its hunk
+unfolded; one that anchors to a line the hunk does not have is warned about on
+stderr and dropped.
 
 ## Security
 

@@ -44,6 +44,7 @@ fn review() -> Review {
       flags: None,
     }],
     file_notes: None,
+    line_notes: Vec::new(),
   }
 }
 

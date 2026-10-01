@@ -45,6 +45,14 @@ pub enum AnchorKind {
   Overall,
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum NoteKind {
+  #[default]
+  Note,
+  Flag,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ProgressState {
@@ -144,6 +152,18 @@ pub struct Chapter {
   pub flags: Option<Vec<String>>,
 }
 
+/// An agent annotation pinned to one diff line. Distinct from a `Comment`: the
+/// agent writes these before the review, the human writes comments during it.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LineNote {
+  pub hunk: String,
+  pub side: Side,
+  pub line: u32,
+  pub body: String,
+  #[serde(default)]
+  pub kind: NoteKind,
+}
+
 /// Authored by the agent, not by diffpane. Everything in it is optional, and a
 /// chapter may reference a hunk id that no longer exists.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -156,6 +176,8 @@ pub struct Review {
   pub chapters: Vec<Chapter>,
   #[serde(default, skip_serializing_if = "Option::is_none")]
   pub file_notes: Option<std::collections::BTreeMap<String, String>>,
+  #[serde(default, skip_serializing_if = "Vec::is_empty")]
+  pub line_notes: Vec<LineNote>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -192,4 +214,24 @@ pub struct ReviewState {
   pub overall: Overall,
   pub submitted: bool,
   pub submitted_at: Option<String>,
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn a_review_without_line_notes_parses() {
+    let review: Review = serde_json::from_str(r#"{"chapters":[]}"#).unwrap();
+    assert!(review.line_notes.is_empty());
+  }
+
+  #[test]
+  fn a_line_note_without_a_kind_is_a_plain_note() {
+    let body =
+      r#"{"chapters":[],"line_notes":[{"hunk":"f0h1","side":"new","line":73,"body":"x"}]}"#;
+    let review: Review = serde_json::from_str(body).unwrap();
+    assert_eq!(review.line_notes[0].kind, NoteKind::Note);
+    assert_eq!(review.line_notes[0].side, Side::New);
+  }
 }

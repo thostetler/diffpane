@@ -296,7 +296,29 @@
     "file_notes": {
       "src/search/cache.ts": "Read top-down; the hunk intentionally exceeds forty lines.",
       "src/generated/search-schema.ts": "Generated output, truncated after first hunk."
-    }
+    },
+    "line_notes": [
+      {
+        "hunk": "f0h1",
+        "side": "new",
+        "line": 73,
+        "kind": "flag",
+        "body": "A cache hit returns before the freshness check below ever runs."
+      },
+      {
+        "hunk": "f0h1",
+        "side": "old",
+        "line": 42,
+        "kind": "note",
+        "body": "This return moved below the cache write, so a miss now populates before returning."
+      },
+      {
+        "hunk": "f1h0",
+        "side": "new",
+        "line": 12,
+        "body": "Eviction is never exercised: nothing here writes more than MAX_ENTRIES keys."
+      }
+    ]
   },
   "comments": {
     "comments": [

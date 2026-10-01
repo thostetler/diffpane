@@ -41,7 +41,13 @@ Write the narrative to a temp file, e.g. `/tmp/diffpane-review.json`:
       "flags": ["No eviction test."]
     }
   ],
-  "file_notes": { "src/search/cache.ts": "New module, read top-down." }
+  "file_notes": { "src/search/cache.ts": "New module, read top-down." },
+  "line_notes": [
+    { "hunk": "f0h1", "side": "new", "line": 73, "kind": "flag",
+      "body": "A cache hit returns before the freshness check below ever runs." },
+    { "hunk": "f0h1", "side": "old", "line": 42,
+      "body": "This return moved below the cache write." }
+  ]
 }
 ```
 
@@ -54,6 +60,13 @@ Rules — this is the part that makes the skill worth more than bare `diffpane`:
   there; never restate what it plainly shows.
 - **Flags earn their place.** Mixed concerns, logic changed but tests didn't,
   risky or subtle spots. Not "this adds a function".
+- **Line notes are for what the line cannot say itself.** The constraint that
+  forced it, the caller it has to match, the ordering that matters. One or two
+  sentences, and never a restatement of the line. `side` is `old` for a removed
+  line, `new` for an added or context one — get it wrong and the note lands
+  nowhere. `"kind": "flag"` opens on load and is for the handful of lines you
+  want read; a plain note sits collapsed on the rail until the user asks. A
+  file with a dozen chips has none.
 - Every hunk should land in exactly one chapter. Unclaimed hunks sweep into a
   trailing "Everything else" — fine for lockfiles, a smell for real code.
 - Sweep `noise: true` files into one chore chapter; don't narrate them.

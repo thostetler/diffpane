@@ -483,6 +483,7 @@ mod tests {
         flags: None,
       }],
       file_notes: None,
+      line_notes: Vec::new(),
     };
     let state = submitted(vec![]);
     let markdown = build_markdown(&ReportInput {

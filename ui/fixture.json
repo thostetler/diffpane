@@ -344,6 +344,43 @@
     "progress": { "c1": "reviewed" },
     "overall": { "verdict": "fix", "body": "Mostly solid, but remove the debug export and add eviction coverage." },
     "submitted": false,
-    "submitted_at": null
+    "submitted_at": null,
+    "candidate_decisions": {}
+  },
+  "candidates": {
+    "items": [
+      {
+        "id": "cc-0000",
+        "file": "src/search/old-cache.ts",
+        "anchor": "OldCache",
+        "proposed": "Superseded by the LRU cache above; kept only for the migration window.",
+        "rationale": "Fact the code cannot state: this class still has callers in a sibling package until the next release, so it cannot be deleted yet.",
+        "location": { "hunk": "f2h0", "side": "old", "line": 1 }
+      },
+      {
+        "id": "cc-0001",
+        "file": "src/search/cache.ts",
+        "anchor": "cache invalidation strategy",
+        "proposed": null,
+        "rationale": "Fact the code cannot state: entries are invalidated on a fixed TTL rather than on write, because the write path does not know every reader's cache key.",
+        "location": null
+      },
+      {
+        "id": "cc-0002",
+        "file": "src/search/old-cache.ts",
+        "anchor": "OldCache",
+        "proposed": "Second opinion: this can be deleted now, the migration window already closed.",
+        "rationale": "A second candidate landing on the same line as cc-0000, to prove neither gets silently dropped.",
+        "location": { "hunk": "f2h0", "side": "old", "line": 1 }
+      },
+      {
+        "id": "cc-0003",
+        "file": "src/search/cache.ts",
+        "anchor": "normalizeQuery",
+        "proposed": "Normalizing here means casing and whitespace never fragment the cache key.",
+        "rationale": "Fact the code cannot state: this is also called in the read path, so the key shape has to match exactly.",
+        "location": { "hunk": "f0h0", "side": "new", "line": 16 }
+      }
+    ]
   }
 }

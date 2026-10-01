@@ -20,6 +20,7 @@
   --fix: #ff7b8a;
   --ok: #74d99f;
   --question: #86b7ff;
+  --candidate: #c792ea;
   --accent: #7aa2ff;
   --shadow: rgba(0, 0, 0, 0.35);
   --sidebar-w: 236px;
@@ -651,6 +652,106 @@ h1 {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+
+.candidate-chip {
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--candidate);
+  font-size: 10px;
+  line-height: 16px;
+  width: 16px;
+  height: 16px;
+}
+
+.candidate-chip:hover { border: 0; filter: brightness(1.3); }
+.candidate-chip[aria-expanded="true"] {
+  background: color-mix(in srgb, var(--candidate) 22%, transparent);
+}
+.candidate-chip.accept { color: var(--ok); }
+.candidate-chip.deny { color: var(--muted); }
+
+.candidate-panel {
+  margin: 3px 10px 4px 128px;
+  border: 1px solid var(--candidate);
+  background: var(--panel-2);
+  border-radius: 6px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.candidate-rationale {
+  color: var(--muted);
+  white-space: pre-wrap;
+}
+
+.candidate-panel textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  background: var(--panel-3);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 4px 6px;
+  font: inherit;
+}
+
+.candidate-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.candidate-status {
+  color: var(--candidate);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.candidate-tray {
+  margin-bottom: 12px;
+  padding: 8px;
+  border: 1px solid var(--candidate);
+  border-radius: 6px;
+  background: var(--panel);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.candidate-tray-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--candidate);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.candidate-tray-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.candidate-tray-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 11px;
+}
+
+.candidate-tray-file {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  color: var(--text);
+}
+
+.candidate-tray-anchor { color: var(--muted); }
+
+.candidate-tray .candidate-panel { margin-left: 0; }
 
 .fold-row {
   padding: 6px 10px 6px 128px;

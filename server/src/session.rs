@@ -14,7 +14,7 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 use sha2::{Digest, Sha256};
 
-use crate::model::{Hunks, Meta, Review, ReviewState};
+use crate::model::{Candidates, Hunks, Meta, Review, ReviewState};
 
 const SLUG_MAX: usize = 48;
 const LOCK_FILE: &str = ".lock";
@@ -159,6 +159,10 @@ impl Session {
     self.dir.join("comments.json")
   }
 
+  pub fn candidates_path(&self) -> PathBuf {
+    self.dir.join("candidates.json")
+  }
+
   pub fn meta(&self) -> Result<Meta> {
     match read_json(&self.meta_path())? {
       Some(meta) => Ok(meta),
@@ -172,6 +176,10 @@ impl Session {
 
   pub fn review(&self) -> Result<Option<Review>> {
     read_json(&self.review_path())
+  }
+
+  pub fn candidates(&self) -> Result<Candidates> {
+    Ok(read_json(&self.candidates_path())?.unwrap_or_default())
   }
 
   pub fn state(&self) -> Result<ReviewState> {

@@ -111,9 +111,29 @@ fn install_review(session: &Session, file: &str, files: &[FileDiff]) -> Result<(
   write_json(&session.review_path(), &review)
 }
 
+const CANDIDATES_FILE: &str = "dev/comment-candidates.md";
+
+fn install_candidates(session: &Session, root: &std::path::Path, files: &[FileDiff]) -> Result<()> {
+  let path = root.join(CANDIDATES_FILE);
+  let markdown = match std::fs::read_to_string(&path) {
+    Ok(markdown) => markdown,
+    Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+    Err(error) => return Err(error).with_context(|| format!("read {}", path.display())),
+  };
+  write_json(&session.candidates_path(), &crate::candidates::build(&markdown, files))
+}
+
 pub struct Built {
   pub session: Session,
   pub meta: Meta,
+}
+
+fn remove_if_present(path: &std::path::Path) -> Result<()> {
+  match std::fs::remove_file(path) {
+    Ok(()) => Ok(()),
+    Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+    Err(error) => Err(error).context(format!("remove {}", path.display())),
+  }
 }
 
 /// Re-running on the same branch the same day reuses the session directory, so
@@ -124,11 +144,8 @@ pub struct Built {
 /// chapter set nobody asked for.
 fn clear_previous_run(session: &Session) -> Result<()> {
   write_json(&session.state_path(), &ReviewState::default())?;
-  match std::fs::remove_file(session.review_path()) {
-    Ok(()) => Ok(()),
-    Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
-    Err(error) => Err(error).context(format!("remove {}", session.review_path().display())),
-  }
+  remove_if_present(&session.review_path())?;
+  remove_if_present(&session.candidates_path())
 }
 
 /// Builds the session on disk, or `None` when there is nothing to review.
@@ -174,6 +191,7 @@ pub fn build_session(repo: &gix::Repository, options: &Options) -> Result<Option
   if let Some(file) = options.review_file.as_deref() {
     install_review(&session, file, &files)?;
   }
+  install_candidates(&session, &root, &files)?;
   Ok(Some(Built { session, meta }))
 }
 
@@ -189,8 +207,14 @@ pub fn render_report(session: &Session, options: &Options) -> Result<Report> {
   let hunks = session.hunks()?;
   let review = session.review()?;
   let state = session.state()?;
-  let input =
-    ReportInput { meta: &meta, files: &hunks.files, review: review.as_ref(), state: &state };
+  let candidates = session.candidates()?;
+  let input = ReportInput {
+    meta: &meta,
+    files: &hunks.files,
+    review: review.as_ref(),
+    state: &state,
+    candidates: Some(&candidates),
+  };
 
   let markdown = build_markdown(&input);
   if let Some(path) = options.out_file.as_deref() {
@@ -458,9 +482,28 @@ mod tests {
     };
     write_json(&session.review_path(), &stale).unwrap();
 
+    write_json(
+      &session.candidates_path(),
+      &crate::model::Candidates {
+        items: vec![crate::model::CommentCandidate {
+          id: "cc-0000".into(),
+          file: "a.ts".into(),
+          anchor: "x".into(),
+          proposed: None,
+          rationale: "y".into(),
+          location: None,
+        }],
+      },
+    )
+    .unwrap();
+
     clear_previous_run(&session).unwrap();
 
     assert!(!session.review_path().exists(), "stale chapters point at hunks this diff lost");
+    assert!(
+      !session.candidates_path().exists(),
+      "a removed dev/comment-candidates.md should not resurrect"
+    );
     assert!(!session.state().unwrap().submitted, "a previous submit is not this run's");
   }
 

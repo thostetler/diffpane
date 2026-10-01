@@ -189,6 +189,22 @@ renders warm and opens on load. A note keeps its file expanded and its hunk
 unfolded; one that anchors to a line the hunk does not have is warned about on
 stderr and dropped.
 
+### Pending comment candidates
+
+If a `dev/comment-candidates.md` file exists at the repo root when diffpane
+builds its session, it parses each `## <file> — <anchor>` block, tries to
+locate the anchor in that file's diff, and surfaces it as a violet chip —
+hidden behind a "Show pending comments" toggle in the header, since it is
+someone else's scratchpad, not the review. A block whose anchor cannot be
+found in the diff lands in an "Unplaced pending comments" tray in the sidebar
+instead of being dropped.
+
+Each candidate can be accepted, edited, or denied from its chip; the decision
+is saved and stays reversible, like a comment's resolve/reopen. diffpane never
+writes back to `dev/comment-candidates.md` or to source — decisions are
+report-only, surfaced in `comment_candidates` in the `--json` output for
+whatever wrote the candidates file to apply.
+
 ## Security
 
 Each run mints a random token: the page needs it in the URL, the API needs it in

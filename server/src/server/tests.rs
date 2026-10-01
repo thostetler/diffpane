@@ -356,6 +356,7 @@ async fn returns_the_full_payload() {
   assert_eq!(payload["meta"]["title"], "Demo");
   assert_eq!(payload["comments"]["comments"], json!([]));
   assert_eq!(payload["review"]["chapters"][0]["id"], "c1");
+  assert_eq!(payload["candidates"]["items"], json!([]));
 }
 
 #[tokio::test]
@@ -428,6 +429,53 @@ async fn rejects_invalid_comment_payloads() {
     .await
     .expect("send");
   assert_eq!(not_an_object.status(), 400);
+}
+
+#[tokio::test]
+async fn accepts_and_denies_a_comment_candidate() {
+  let app = Harness::start(false).await;
+  write_json(
+    &app.state.session.candidates_path(),
+    &crate::model::Candidates {
+      items: vec![crate::model::CommentCandidate {
+        id: "cc-0000".into(),
+        file: "a.ts".into(),
+        anchor: "thing".into(),
+        proposed: Some("// a fact the code cannot state".into()),
+        rationale: "because".into(),
+        location: None,
+      }],
+    },
+  )
+  .expect("candidates");
+
+  let accepted =
+    app.api(Method::PATCH, "/api/candidates/cc-0000", Some(json!({ "decision": "accept" }))).await;
+  assert_eq!(accepted.status(), 200);
+  assert_eq!(
+    app.state().candidate_decisions["cc-0000"].decision,
+    crate::model::CandidateDecision::Accept
+  );
+
+  let edited = app
+    .api(
+      Method::PATCH,
+      "/api/candidates/cc-0000",
+      Some(json!({ "decision": "edit", "text": "// a better fact" })),
+    )
+    .await;
+  assert_eq!(edited.status(), 200);
+  let stored = app.state();
+  assert_eq!(stored.candidate_decisions["cc-0000"].decision, crate::model::CandidateDecision::Edit);
+  assert_eq!(stored.candidate_decisions["cc-0000"].text.as_deref(), Some("// a better fact"));
+
+  let missing =
+    app.api(Method::PATCH, "/api/candidates/cc-9999", Some(json!({ "decision": "deny" }))).await;
+  assert_eq!(missing.status(), 404);
+
+  let bad_decision =
+    app.api(Method::PATCH, "/api/candidates/cc-0000", Some(json!({ "decision": "nah" }))).await;
+  assert_eq!(bad_decision.status(), 400);
 }
 
 #[tokio::test]

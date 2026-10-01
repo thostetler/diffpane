@@ -214,6 +214,47 @@ pub struct ReviewState {
   pub overall: Overall,
   pub submitted: bool,
   pub submitted_at: Option<String>,
+  #[serde(default)]
+  pub candidate_decisions: std::collections::BTreeMap<String, CandidateState>,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum CandidateDecision {
+  #[default]
+  Pending,
+  Accept,
+  Edit,
+  Deny,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CandidateState {
+  pub decision: CandidateDecision,
+  pub text: Option<String>,
+  pub updated_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CandidateMatch {
+  pub hunk: String,
+  pub side: Side,
+  pub line: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CommentCandidate {
+  pub id: String,
+  pub file: String,
+  pub anchor: String,
+  pub proposed: Option<String>,
+  pub rationale: String,
+  pub location: Option<CandidateMatch>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct Candidates {
+  pub items: Vec<CommentCandidate>,
 }
 
 #[cfg(test)]

@@ -73,6 +73,11 @@ const state = {
   comments: [],
   lineNotes: new Map(),
   expandedNotes: new Set(),
+  candidatesByAnchorKey: new Map(),
+  unplacedCandidates: [],
+  expandedCandidates: new Set(),
+  candidateDrafts: new Map(),
+  showCandidates: false,
   collapsedFiles: new Set(),
   expandedHunks: new Set(),
   // File-hide filters: ephemeral, not persisted. A review session is one-shot,
@@ -159,6 +164,8 @@ function setData(payload) {
   payload.comments.comments ||= [];
   payload.comments.progress ||= {};
   payload.comments.overall ||= { verdict: "ok", body: "" };
+  payload.comments.candidate_decisions ||= {};
+  payload.candidates ||= { items: [] };
   state.data = payload;
   state.comments = payload.comments.comments;
   state.overall = { ...payload.comments.overall };
@@ -195,6 +202,7 @@ function indexData() {
   chapters.push({ id: "unsorted", title: "Everything else", intent: "Hunks not claimed by review.json.", why: "", hunks: unclaimed, files: zeroHunkFiles, size: "", flags: [], synthetic: true });
   state.chapters = chapters;
   indexLineNotes();
+  indexCandidates();
 }
 
 // Agent annotations, keyed the way a rendered line asks for them. A flag opens
@@ -211,6 +219,21 @@ function indexLineNotes() {
   }
 }
 
+function indexCandidates() {
+  state.candidatesByAnchorKey.clear();
+  state.unplacedCandidates = [];
+  for (const candidate of state.data.candidates?.items || []) {
+    if (candidate.location && state.hunksById.has(candidate.location.hunk)) {
+      const key = `${candidate.location.hunk}:${candidate.location.side}:${candidate.location.line}`;
+      const existing = state.candidatesByAnchorKey.get(key);
+      if (existing) existing.push(candidate);
+      else state.candidatesByAnchorKey.set(key, [candidate]);
+    } else {
+      state.unplacedCandidates.push(candidate);
+    }
+  }
+}
+
 function noteKeyOf(anchor) {
   if (!anchor || anchor.kind !== "line") return "";
   return `${anchor.hunk}:${anchor.side}:${anchor.line}`;
@@ -219,6 +242,15 @@ function noteKeyOf(anchor) {
 function annotatedFilePaths() {
   const paths = new Set();
   for (const key of state.lineNotes.keys()) {
+    const file = state.hunkFile.get(key.slice(0, key.indexOf(":")));
+    if (file) paths.add(file.path);
+  }
+  return paths;
+}
+
+function candidateFilePaths() {
+  const paths = new Set();
+  for (const key of state.candidatesByAnchorKey.keys()) {
     const file = state.hunkFile.get(key.slice(0, key.indexOf(":")));
     if (file) paths.add(file.path);
   }
@@ -411,6 +443,7 @@ function renderSidebar() {
     // insertion, so a permanently mounted banner would announce nothing.
     failure ? $("div", { class: "banner", role: "alert", text: failure }) : null,
     renderFilterPanel(),
+    renderUnplacedCandidates(),
     $("nav", { class: "nav-list", "aria-label": "Chapters" }, state.chapters.map(renderNavItem))
   ]);
 }
@@ -455,12 +488,13 @@ function openCommentsIn(chapter) {
 }
 
 function renderHeader() {
-  const { meta, review } = state.data;
+  const { meta, review, candidates } = state.data;
   const reviewed = state.chapters.filter(chapter => chapterState(chapter.id) === "reviewed").length;
   const total = state.chapters.length;
   const range = meta?.base && meta?.head ? `${meta.base} → ${meta.head}` : meta?.diff_cmd || "";
   const totals = meta?.totals ? `${meta.totals.files} files · +${meta.totals.additions} −${meta.totals.deletions}` : "no totals";
   const expanded = state.foldIntent === "expanded";
+  const candidateCount = candidates?.items?.length || 0;
   return $("header", { class: "top" }, [
     $("div", { class: "top-row" }, [
       $("div", { class: "top-main" }, [
@@ -473,13 +507,21 @@ function renderHeader() {
       ].filter(Boolean)),
       $("div", { class: "toolbar" }, [
         $("span", { class: "badge", text: `${reviewed}/${total} reviewed` }),
+        candidateCount > 0
+          ? $("button", {
+              type: "button",
+              text: `${state.showCandidates ? "Hide" : "Show"} pending comments (${candidateCount})`,
+              dataset: { fk: "toggle-candidates" },
+              onClick: toggleCandidatesVisible
+            })
+          : null,
         $("button", {
           type: "button",
           text: expanded ? "Collapse all" : "Expand all",
           dataset: { fk: "fold-all" },
           onClick: () => setAllExpanded(!expanded)
         })
-      ])
+      ].filter(Boolean))
     ])
   ]);
 }
@@ -624,7 +666,10 @@ function renderHunk(chapter, file, hunk) {
   const hasComment = anchors.some(anchor => commentsForAnchor(anchor).length);
   // Folding the middle would hide the very line the agent annotated.
   const hasNote = anchors.some(anchor => state.lineNotes.has(noteKeyOf(anchor)));
-  const shouldFold = lines.length > 40 && !state.expandedHunks.has(hunk.id) && !hasComment && !hasNote;
+  const hasCandidate =
+    state.showCandidates && anchors.some(anchor => state.candidatesByAnchorKey.has(noteKeyOf(anchor)));
+  const shouldFold =
+    lines.length > 40 && !state.expandedHunks.has(hunk.id) && !hasComment && !hasNote && !hasCandidate;
   const visible = shouldFold ? [...lines.slice(0, 8), ...lines.slice(-8)] : lines;
   for (let idx = 0; idx < visible.length; idx++) {
     if (shouldFold && idx === 8) {
@@ -654,6 +699,7 @@ function appendLine(parent, chapter, file, hunk, line) {
   const noteKey = noteKeyOf(anchor);
   const note = state.lineNotes.get(noteKey);
   const panelId = `note-${hunk.id}-${line.i}`;
+  const candidates = state.showCandidates ? state.candidatesByAnchorKey.get(noteKey) || [] : [];
   const row = $("div", {
     class: `diff-row ${line.type}`,
     id: `line-${hunk.id}-${line.i}`,
@@ -682,10 +728,18 @@ function appendLine(parent, chapter, file, hunk, line) {
     $("div", { class: "code", text: line.text ?? "" }),
     // Always present, note or not: the rail is a grid column, and a missing
     // cell would shift the row it is missing from.
-    $("div", { class: "note-rail" }, note ? renderNoteChip(note, noteKey, panelId, label) : [])
+    $("div", { class: "note-rail" }, [
+      note ? renderNoteChip(note, noteKey, panelId, label) : null,
+      ...candidates.map(candidate => renderCandidateChip(candidate, `candidate-${candidate.id}`, label))
+    ].filter(Boolean))
   ]);
   parent.append(row);
   if (note && state.expandedNotes.has(noteKey)) parent.append(renderNote(note, panelId));
+  for (const candidate of candidates) {
+    if (state.expandedCandidates.has(candidate.id)) {
+      parent.append(renderCandidatePanel(candidate, `candidate-${candidate.id}`));
+    }
+  }
   if (state.composer?.key === key) parent.append(renderComposer());
   for (const comment of commentsForAnchor(anchor)) parent.append(renderComment(comment));
 }
@@ -720,6 +774,108 @@ function toggleNote(key) {
   if (state.expandedNotes.has(key)) state.expandedNotes.delete(key);
   else state.expandedNotes.add(key);
   render();
+}
+
+const CANDIDATE_GLYPH = { pending: "✎", accept: "✓", edit: "✎", deny: "✕" };
+const CANDIDATE_LABEL = { pending: "pending", accept: "accepted", edit: "edited", deny: "denied" };
+
+function candidateDecisionOf(id) {
+  return state.data.comments.candidate_decisions?.[id] || null;
+}
+
+function toggleCandidate(id) {
+  if (state.expandedCandidates.has(id)) state.expandedCandidates.delete(id);
+  else state.expandedCandidates.add(id);
+  render();
+}
+
+function renderCandidateChip(candidate, panelId, lineLabel) {
+  const decision = candidateDecisionOf(candidate.id)?.decision || "pending";
+  const expanded = state.expandedCandidates.has(candidate.id);
+  return $("button", {
+    type: "button",
+    class: `candidate-chip ${decision}`,
+    text: CANDIDATE_GLYPH[decision] || CANDIDATE_GLYPH.pending,
+    "aria-label":
+      `${expanded ? "Hide" : "Show"} pending comment on ${lineLabel || candidate.file}`,
+    "aria-controls": panelId,
+    ariaExpanded: expanded,
+    dataset: { fk: `candidate:${candidate.id}` },
+    onClick: event => { event.stopPropagation(); toggleCandidate(candidate.id); }
+  });
+}
+
+async function decideCandidate(candidate, decision, text) {
+  const result = await mutate(
+    `/api/candidates/${encodeURIComponent(candidate.id)}`,
+    { method: "PATCH", body: JSON.stringify({ decision, text }) },
+    () => ({ decision, text, updated_at: new Date().toISOString() })
+  );
+  state.data.comments.candidate_decisions[candidate.id] = result;
+  state.candidateDrafts.delete(candidate.id);
+  render();
+}
+
+function renderCandidatePanel(candidate, panelId) {
+  const decision = candidateDecisionOf(candidate.id);
+  const draft = state.candidateDrafts.get(candidate.id) ?? decision?.text ?? candidate.proposed ?? "";
+  const textarea = $("textarea", { rows: "2", placeholder: "Comment text…" });
+  textarea.value = draft;
+  textarea.addEventListener("input", () => state.candidateDrafts.set(candidate.id, textarea.value));
+  const status = decision && decision.decision !== "pending"
+    ? $("span", { class: "candidate-status", text: CANDIDATE_LABEL[decision.decision] })
+    : null;
+  return $("div", { class: "candidate-panel", id: panelId }, [
+    $("div", { class: "candidate-rationale", text: candidate.rationale || "" }),
+    textarea,
+    $("div", { class: "candidate-actions" }, [
+      $("button", {
+        type: "button",
+        text: "Accept",
+        dataset: { fk: `candidate-accept:${candidate.id}` },
+        onClick: guard(() => decideCandidate(candidate, "accept", candidate.proposed ?? null))
+      }),
+      $("button", {
+        type: "button",
+        text: "Save edit",
+        dataset: { fk: `candidate-edit:${candidate.id}` },
+        onClick: guard(() => decideCandidate(candidate, "edit", textarea.value))
+      }),
+      $("button", {
+        type: "button",
+        text: "Deny",
+        dataset: { fk: `candidate-deny:${candidate.id}` },
+        onClick: guard(() => decideCandidate(candidate, "deny", null))
+      }),
+      status
+    ].filter(Boolean))
+  ]);
+}
+
+function toggleCandidatesVisible() {
+  state.showCandidates = !state.showCandidates;
+  if (state.showCandidates) {
+    for (const path of candidateFilePaths()) state.collapsedFiles.delete(path);
+  }
+  render();
+}
+
+function renderUnplacedCandidates() {
+  if (!state.showCandidates || !state.unplacedCandidates.length) return null;
+  return $("div", { class: "candidate-tray" }, [
+    $("div", { class: "candidate-tray-title", text: "Unplaced pending comments" }),
+    ...state.unplacedCandidates.map(candidate => {
+      const panelId = `candidate-unplaced-${candidate.id}`;
+      return $("div", { class: "candidate-tray-item" }, [
+        $("div", { class: "candidate-tray-label" }, [
+          $("span", { class: "candidate-tray-file", text: candidate.file }),
+          $("span", { class: "candidate-tray-anchor", text: candidate.anchor })
+        ]),
+        renderCandidateChip(candidate, panelId),
+        state.expandedCandidates.has(candidate.id) ? renderCandidatePanel(candidate, panelId) : null
+      ].filter(Boolean));
+    })
+  ]);
 }
 
 function lineAnchor(file, hunk, line, chapter) {

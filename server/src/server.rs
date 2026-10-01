@@ -31,11 +31,11 @@ use tokio::net::TcpListener;
 use tokio::sync::mpsc;
 
 use crate::assets::Assets;
-use crate::model::{Comment, Overall, ReviewState};
+use crate::model::{CandidateState, Comment, Overall, ReviewState};
 use crate::session::{Session, now_iso};
 use crate::validate::{
-  ApiError, ApiResult, validate_anchor, validate_body, validate_progress_state, validate_resolved,
-  validate_verdict,
+  ApiError, ApiResult, validate_anchor, validate_body, validate_candidate_decision,
+  validate_progress_state, validate_resolved, validate_verdict,
 };
 
 const MAX_BODY_BYTES: usize = 1024 * 1024;
@@ -216,6 +216,7 @@ pub fn router(state: Arc<AppState>) -> Router {
     .route("/state", get(get_state))
     .route("/comments", post(create_comment))
     .route("/comments/{id}", axum::routing::delete(delete_comment).patch(patch_comment))
+    .route("/candidates/{id}", axum::routing::patch(patch_candidate))
     .route("/progress", put(put_progress))
     .route("/overall", put(put_overall))
     .route("/submit", post(post_submit))
@@ -389,6 +390,19 @@ impl AppState {
     ids.insert("unsorted".to_string());
     Ok(ids)
   }
+
+  fn candidate_ids(&self) -> ApiResult<BTreeSet<String>> {
+    Ok(
+      self
+        .session
+        .candidates()
+        .map_err(internal)?
+        .items
+        .into_iter()
+        .map(|candidate| candidate.id)
+        .collect(),
+    )
+  }
 }
 
 /// An empty body is `{}`, matching the TypeScript; anything else must be a
@@ -417,6 +431,7 @@ async fn get_review(State(state): State<Arc<AppState>>, headers: HeaderMap) -> A
     "hunks": to_value(&session.hunks().map_err(internal)?)?,
     "review": to_value(&session.review().map_err(internal)?)?,
     "comments": to_value(&state.state()?)?,
+    "candidates": to_value(&session.candidates().map_err(internal)?)?,
   }))
 }
 
@@ -524,6 +539,31 @@ async fn delete_comment(
     Ok(())
   })?;
   ok(json!({ "ok": true }))
+}
+
+async fn patch_candidate(
+  State(state): State<Arc<AppState>>,
+  headers: HeaderMap,
+  UrlPath(id): UrlPath<String>,
+  body: Bytes,
+) -> ApiResult<Response> {
+  state.guard_api(&headers, &Method::PATCH)?;
+  if !state.candidate_ids()?.contains(&id) {
+    return Err(ApiError::new(format!("no such candidate: {id}"), 404));
+  }
+  let body = parse_body(&body)?;
+  let decision = validate_candidate_decision(body.get("decision"))?;
+  let text = match body.get("text") {
+    Some(Value::Null) | None => None,
+    Some(_) => Some(validate_body(body.get("text"))?),
+  };
+  let stamp = now_iso();
+  let payload = state.mutate(|current| {
+    let record = CandidateState { decision, text: text.clone(), updated_at: stamp.clone() };
+    current.candidate_decisions.insert(id.clone(), record.clone());
+    to_value(&record)
+  })?;
+  ok(payload)
 }
 
 async fn put_progress(

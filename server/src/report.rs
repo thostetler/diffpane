@@ -8,8 +8,8 @@ use std::collections::BTreeMap;
 use serde::Serialize;
 
 use crate::model::{
-  Anchor, AnchorKind, Comment, FileDiff, LineType, Meta, ProgressState, Review, ReviewState, Side,
-  Totals, Verdict,
+  Anchor, AnchorKind, CandidateDecision, Candidates, Comment, FileDiff, LineType, Meta,
+  ProgressState, Review, ReviewState, Side, Totals, Verdict,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -35,6 +35,18 @@ pub struct ReportInput<'a> {
   pub files: &'a [FileDiff],
   pub review: Option<&'a Review>,
   pub state: &'a ReviewState,
+  pub candidates: Option<&'a Candidates>,
+}
+
+fn candidate_text<'a>(
+  candidate: &'a crate::model::CommentCandidate,
+  decision: &'a crate::model::CandidateState,
+) -> Option<&'a str> {
+  match decision.decision {
+    CandidateDecision::Accept => candidate.proposed.as_deref(),
+    CandidateDecision::Edit => decision.text.as_deref(),
+    CandidateDecision::Deny | CandidateDecision::Pending => None,
+  }
 }
 
 fn verdict_mark(verdict: Verdict) -> &'static str {
@@ -136,7 +148,7 @@ fn group_comments<'a>(
 }
 
 pub fn build_markdown(input: &ReportInput) -> String {
-  let ReportInput { meta, files, review, state } = *input;
+  let ReportInput { meta, files, review, state, candidates } = *input;
   let chapters = chapter_titles(review);
   let open = open_comments(state);
   let resolved = state.comments.len() - open.len();
@@ -192,6 +204,30 @@ pub fn build_markdown(input: &ReportInput) -> String {
         .collect()
     })
     .unwrap_or_default();
+  let decided: Vec<(&crate::model::CommentCandidate, &str)> = candidates
+    .map(|candidates| {
+      candidates
+        .items
+        .iter()
+        .filter_map(|candidate| {
+          let decision = state.candidate_decisions.get(&candidate.id)?;
+          candidate_text(candidate, decision).map(|text| (candidate, text))
+        })
+        .collect()
+    })
+    .unwrap_or_default();
+  if !decided.is_empty() {
+    lines.push(String::new());
+    lines.push("## Comment candidates".to_string());
+    for (candidate, text) in decided {
+      lines.push(String::new());
+      lines.push(format!("- **{}** — {}", candidate.file, candidate.anchor));
+      for line in text.split('\n') {
+        lines.push(format!("  {line}"));
+      }
+    }
+  }
+
   if !unreviewed.is_empty() {
     lines.push(String::new());
     lines.push(format!("Chapters not marked reviewed: {}", unreviewed.join(", ")));
@@ -222,6 +258,14 @@ pub struct JsonComment<'a> {
 }
 
 #[derive(Debug, Serialize)]
+pub struct JsonCandidate<'a> {
+  pub file: &'a str,
+  pub anchor: &'a str,
+  pub decision: CandidateDecision,
+  pub text: Option<&'a str>,
+}
+
+#[derive(Debug, Serialize)]
 pub struct JsonReport<'a> {
   pub outcome: Outcome,
   pub submitted: bool,
@@ -231,10 +275,11 @@ pub struct JsonReport<'a> {
   pub overall: &'a crate::model::Overall,
   pub progress: &'a BTreeMap<String, ProgressState>,
   pub comments: Vec<JsonComment<'a>>,
+  pub comment_candidates: Vec<JsonCandidate<'a>>,
 }
 
 pub fn build_json<'a>(input: &ReportInput<'a>) -> JsonReport<'a> {
-  let ReportInput { meta, files, state, .. } = *input;
+  let ReportInput { meta, files, state, candidates, .. } = *input;
   JsonReport {
     outcome: outcome_of(state),
     submitted: state.submitted,
@@ -258,6 +303,23 @@ pub fn build_json<'a>(input: &ReportInput<'a>) -> JsonReport<'a> {
         },
       })
       .collect(),
+    comment_candidates: candidates
+      .map(|candidates| {
+        candidates
+          .items
+          .iter()
+          .map(|candidate| {
+            let decision = state.candidate_decisions.get(&candidate.id);
+            JsonCandidate {
+              file: &candidate.file,
+              anchor: &candidate.anchor,
+              decision: decision.map_or(CandidateDecision::Pending, |decision| decision.decision),
+              text: decision.and_then(|decision| candidate_text(candidate, decision)),
+            }
+          })
+          .collect()
+      })
+      .unwrap_or_default(),
   }
 }
 
@@ -408,8 +470,13 @@ mod tests {
     let files = files();
     let meta = meta();
     let state = submitted(vec![comment(Verdict::Fix, anchored_line(), false)]);
-    let markdown =
-      build_markdown(&ReportInput { meta: &meta, files: &files, review: None, state: &state });
+    let markdown = build_markdown(&ReportInput {
+      meta: &meta,
+      files: &files,
+      review: None,
+      state: &state,
+      candidates: None,
+    });
     assert!(markdown.contains("## src/a.ts"), "{markdown}");
     assert!(markdown.contains("[FIX] src/a.ts:1"), "{markdown}");
     assert!(markdown.contains("+const a = 2;"), "{markdown}");
@@ -421,8 +488,13 @@ mod tests {
     let files = files();
     let meta = meta();
     let state = ReviewState::default();
-    let markdown =
-      build_markdown(&ReportInput { meta: &meta, files: &files, review: None, state: &state });
+    let markdown = build_markdown(&ReportInput {
+      meta: &meta,
+      files: &files,
+      review: None,
+      state: &state,
+      candidates: None,
+    });
     assert!(markdown.contains("IN PROGRESS (not submitted)"), "{markdown}");
   }
 
@@ -433,8 +505,13 @@ mod tests {
     let mut pinned = comment(Verdict::Fix, anchored_line(), false);
     pinned.body = "first\nsecond".into();
     let state = submitted(vec![pinned]);
-    let markdown =
-      build_markdown(&ReportInput { meta: &meta, files: &files, review: None, state: &state });
+    let markdown = build_markdown(&ReportInput {
+      meta: &meta,
+      files: &files,
+      review: None,
+      state: &state,
+      candidates: None,
+    });
     assert!(markdown.contains("— first\n  second\n"), "{markdown}");
     assert_eq!(fence_for("no backticks"), "```");
     assert_eq!(fence_for("a ``` b"), "````");
@@ -445,8 +522,13 @@ mod tests {
     let files = files();
     let meta = meta();
     let state = submitted(vec![comment(Verdict::Fix, anchored_line(), false)]);
-    let report =
-      build_json(&ReportInput { meta: &meta, files: &files, review: None, state: &state });
+    let report = build_json(&ReportInput {
+      meta: &meta,
+      files: &files,
+      review: None,
+      state: &state,
+      candidates: None,
+    });
     assert_eq!(report.outcome, Outcome::ChangesRequested);
     assert_eq!(report.comments.len(), 1);
     assert_eq!(report.comments[0].file, Some("src/a.ts"));
@@ -460,8 +542,13 @@ mod tests {
     let files = files();
     let meta = meta();
     let state = submitted(vec![comment(Verdict::Fix, anchor(Some("src/a.ts")), true)]);
-    let markdown =
-      build_markdown(&ReportInput { meta: &meta, files: &files, review: None, state: &state });
+    let markdown = build_markdown(&ReportInput {
+      meta: &meta,
+      files: &files,
+      review: None,
+      state: &state,
+      candidates: None,
+    });
     assert!(markdown.contains("0 open comment(s), 1 resolved"), "{markdown}");
   }
 
@@ -491,6 +578,7 @@ mod tests {
       files: &files,
       review: Some(&review),
       state: &state,
+      candidates: None,
     });
     assert!(markdown.contains("Chapters not marked reviewed: The interesting one"), "{markdown}");
   }

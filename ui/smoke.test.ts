@@ -18,6 +18,7 @@ interface Fixture {
   hunks: unknown;
   review: unknown;
   comments: { comments: unknown[] };
+  candidates: unknown;
 }
 
 interface Address {
@@ -27,6 +28,7 @@ interface Address {
 
 interface State {
   overall: { verdict: string | null; body: string };
+  candidate_decisions: Record<string, { decision: string; text: string | null }>;
 }
 
 const ROOT = join(import.meta.dirname, '..');
@@ -99,6 +101,7 @@ before(async () => {
   writeJson(join(dir, 'meta.json'), FIXTURE.meta);
   writeJson(join(dir, 'hunks.json'), FIXTURE.hunks);
   writeJson(join(dir, 'review.json'), FIXTURE.review);
+  writeJson(join(dir, 'candidates.json'), FIXTURE.candidates);
 
   server = spawn(serverPath(), [dir], { stdio: ['ignore', 'pipe', 'inherit'] });
   const address = JSON.parse(await firstLine(server.stdout!)) as Address;
@@ -119,6 +122,7 @@ beforeEach(async () => {
     overall: { verdict: null, body: '' },
     submitted: false,
     submitted_at: null,
+    candidate_decisions: {},
   });
   page = await browser.newPage({ viewport: { width: 1400, height: 900 } });
   await page.goto(url);
@@ -399,6 +403,75 @@ test('draft pattern text survives a re-render triggered elsewhere', async () => 
   await input.fill('*.generated.ts');
   await page.locator('[data-fk="filter-preset:lockfiles"]').check();
   assert.equal(await input.inputValue(), '*.generated.ts');
+});
+
+test('pending comments are hidden until the toggle is used', async () => {
+  assert.equal(await page.locator('.candidate-chip').count(), 0);
+  assert.equal(await page.locator('.candidate-tray').count(), 0);
+
+  await page.locator('[data-fk="toggle-candidates"]').click();
+  assert.equal(await page.locator('.candidate-chip').count(), 4);
+  assert.equal(await page.locator('.candidate-tray-item').count(), 1);
+
+  await page.locator('[data-fk="toggle-candidates"]').click();
+  assert.equal(await page.locator('.candidate-chip').count(), 0);
+});
+
+test('two candidates on the same line both render, neither replaces the other', async () => {
+  await page.locator('[data-fk="toggle-candidates"]').click();
+  const chips = page.locator('.file[data-file="src/search/old-cache.ts"] .candidate-chip');
+  assert.equal(await chips.count(), 2);
+
+  await chips.nth(0).click();
+  await chips.nth(1).click();
+  assert.equal(await page.locator('.candidate-panel').count(), 2);
+
+  await page.locator('[data-fk="candidate-accept:cc-0000"]').click();
+  await page.waitForFunction(() => document.querySelectorAll('.candidate-status').length > 0);
+  assert.equal(state().candidate_decisions['cc-0000']!.decision, 'accept');
+  assert.equal(state().candidate_decisions['cc-0002'], undefined, 'the second candidate was not touched');
+});
+
+test('accepting a candidate persists the decision and shows its status', async () => {
+  await page.locator('[data-fk="toggle-candidates"]').click();
+  const chip = page.locator('.file[data-file="src/search/old-cache.ts"] .candidate-chip').first();
+  await chip.click();
+  await page.locator('[data-fk^="candidate-accept:"]').first().click();
+
+  await page.waitForSelector('.candidate-status');
+  assert.equal(await page.locator('.candidate-status').textContent(), 'accepted');
+  assert.equal(state().candidate_decisions['cc-0000']!.decision, 'accept');
+});
+
+test('editing a candidate saves the typed text, not the proposed text', async () => {
+  await page.locator('[data-fk="toggle-candidates"]').click();
+  await page.locator('.file[data-file="src/search/old-cache.ts"] .candidate-chip').first().click();
+  const textarea = page.locator('.candidate-panel textarea').first();
+  await textarea.fill('A rewritten comment.');
+  await page.locator('[data-fk^="candidate-edit:"]').first().click();
+
+  await page.waitForSelector('.candidate-status');
+  const stored = state().candidate_decisions['cc-0000']!;
+  assert.equal(stored.decision, 'edit');
+  assert.equal(stored.text, 'A rewritten comment.');
+});
+
+test('a candidate inside a folded hunk unfolds it, not just the file', async () => {
+  const chip = page.locator('[data-fk="candidate:cc-0003"]');
+  assert.equal(await chip.count(), 0, 'the hunk should start folded');
+
+  await page.locator('[data-fk="toggle-candidates"]').click();
+  assert.equal(await chip.count(), 1, 'the candidate should force the hunk open');
+});
+
+test('denying a candidate in the unplaced tray persists too', async () => {
+  await page.locator('[data-fk="toggle-candidates"]').click();
+  const item = page.locator('.candidate-tray-item').first();
+  await item.locator('.candidate-chip').click();
+  await item.locator('[data-fk^="candidate-deny:"]').click();
+
+  await page.waitForSelector('.candidate-tray .candidate-status');
+  assert.equal(state().candidate_decisions['cc-0001']!.decision, 'deny');
 });
 
 test('the file header stays under the page header while its file is on screen', async () => {

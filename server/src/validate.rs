@@ -6,7 +6,7 @@
 
 use serde_json::Value;
 
-use crate::model::{Anchor, AnchorKind, ProgressState, Side, Verdict};
+use crate::model::{Anchor, AnchorKind, CandidateDecision, ProgressState, Side, Verdict};
 
 #[derive(Debug, Clone)]
 pub struct ApiError {
@@ -58,6 +58,16 @@ pub fn validate_body(value: Option<&Value>) -> ApiResult<String> {
     return Err(ApiError::bad_request("comment body is empty"));
   }
   Ok(text.to_string())
+}
+
+pub fn validate_candidate_decision(value: Option<&Value>) -> ApiResult<CandidateDecision> {
+  match value.and_then(Value::as_str) {
+    Some("pending") => Ok(CandidateDecision::Pending),
+    Some("accept") => Ok(CandidateDecision::Accept),
+    Some("edit") => Ok(CandidateDecision::Edit),
+    Some("deny") => Ok(CandidateDecision::Deny),
+    _ => Err(ApiError::bad_request("decision must be one of pending, accept, edit, deny")),
+  }
 }
 
 pub fn validate_resolved(value: Option<&Value>) -> ApiResult<bool> {
@@ -226,6 +236,17 @@ mod tests {
     // `Boolean("false")` was `true`, which is how this got through once.
     assert!(validate_resolved(Some(&json!("false"))).is_err());
     assert!(validate_resolved(Some(&json!(0))).is_err());
+  }
+
+  #[test]
+  fn validates_candidate_decisions() {
+    assert_eq!(
+      validate_candidate_decision(Some(&json!("accept"))).unwrap(),
+      CandidateDecision::Accept
+    );
+    assert_eq!(validate_candidate_decision(Some(&json!("deny"))).unwrap(), CandidateDecision::Deny);
+    assert!(validate_candidate_decision(Some(&json!("maybe"))).is_err());
+    assert!(validate_candidate_decision(None).is_err());
   }
 
   #[test]

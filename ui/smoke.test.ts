@@ -351,6 +351,56 @@ test('the help overlay survives a re-render and restores focus', async () => {
   assert.equal(await focusedKey(), 'help');
 });
 
+test('the Tests preset hides the test file and reports how many are hidden', async () => {
+  await page.locator('[data-fk="filter-preset:tests"]').check();
+  assert.equal(await page.locator(`.file[data-file="${ANNOTATED_FILE}"]`).count(), 0);
+  assert.match((await page.locator('.filter-count').textContent()) ?? '', /^\d+ of \d+ hidden$/);
+});
+
+test('clearing filters restores a hidden file', async () => {
+  await page.locator('[data-fk="filter-preset:tests"]').check();
+  await page.waitForSelector(`.file[data-file="${ANNOTATED_FILE}"]`, { state: 'detached' });
+
+  await page.locator('[data-fk="filter-clear"]').click();
+  assert.equal(await page.locator(`.file[data-file="${ANNOTATED_FILE}"]`).count(), 1);
+  assert.equal(await page.locator('.filter-count').count(), 0);
+});
+
+test('a custom pattern hides matching files and its chip removes it', async () => {
+  const target = 'src/generated/search-schema.ts';
+  await page.locator('[data-fk="filter-pattern-input"]').fill('src/generated/*');
+  await page.locator('.filter-pattern-form button[type="submit"]').click();
+
+  await page.waitForSelector(`.file[data-file="${target}"]`, { state: 'detached' });
+  // That file is the only thing in its chapter, so the chapter goes empty for
+  // filtering, not for lacking hunks — the two messages must not collide.
+  // ".chapter > .empty" excludes the unrelated "No hunks in this file." shown
+  // inside zero-hunk file groups elsewhere on the page.
+  assert.match((await page.locator('.chapter > .empty').last().textContent()) ?? '', /hidden by filters/);
+
+  await page.locator('[data-fk="filter-pattern-remove:src/generated/*"]').click();
+  assert.equal(await page.locator(`.file[data-file="${target}"]`).count(), 1);
+});
+
+test('a duplicate pattern is rejected without clearing the list', async () => {
+  await page.locator('[data-fk="filter-pattern-input"]').fill('*.md');
+  await page.locator('.filter-pattern-form button[type="submit"]').click();
+  await page.waitForSelector('[data-fk="filter-pattern-remove:*.md"]');
+
+  await page.locator('[data-fk="filter-pattern-input"]').fill('*.md');
+  await page.locator('.filter-pattern-form button[type="submit"]').click();
+
+  assert.equal(await page.locator('.filter-error').count(), 1);
+  assert.equal(await page.locator('.filter-patterns li').count(), 1);
+});
+
+test('draft pattern text survives a re-render triggered elsewhere', async () => {
+  const input = page.locator('[data-fk="filter-pattern-input"]');
+  await input.fill('*.generated.ts');
+  await page.locator('[data-fk="filter-preset:lockfiles"]').check();
+  assert.equal(await input.inputValue(), '*.generated.ts');
+});
+
 test('the file header stays under the page header while its file is on screen', async () => {
   const parked = await page.evaluate((path) => {
     const file = document.querySelector<HTMLElement>(`.file[data-file="${path}"]`)!;

@@ -114,6 +114,103 @@ button:focus-visible, textarea:focus-visible, input:focus-visible, a:focus-visib
   font-size: 12px;
 }
 
+.filter-panel {
+  margin-bottom: 12px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.filter-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.filter-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.filter-count {
+  font-size: 11px;
+  color: var(--faint);
+}
+
+.filter-presets {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.filter-preset {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.filter-pattern-form {
+  display: flex;
+  gap: 6px;
+}
+
+.filter-pattern-form input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 4px 6px;
+  font-size: 12px;
+}
+
+.filter-error {
+  color: var(--warn-text);
+  font-size: 11px;
+}
+
+.filter-patterns {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.filter-pattern-chip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: var(--panel-3);
+  font-size: 11px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+.filter-pattern-chip button {
+  padding: 0 4px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+}
+
+.filter-pattern-chip button:hover { color: var(--fix); }
+
 .nav-list {
   display: flex;
   flex-direction: column;

@@ -18,6 +18,51 @@ const $ = (tag, props = {}, children = []) => {
 const fixtureMode = new URLSearchParams(location.search).get("fixture") === "1";
 const token = new URLSearchParams(location.search).get("t") || "";
 
+// One-click hide rules for the common case. Each pattern is matched against
+// the basename when it has no slash, so ".test." patterns catch every
+// language's test files without listing extensions one by one.
+const PRESETS = [
+  { id: "tests", label: "Tests", patterns: ["*.test.*", "*.spec.*", "*_test.*", "test_*.*"] },
+  {
+    id: "lockfiles",
+    label: "Lockfiles",
+    patterns: ["package-lock.json", "pnpm-lock.yaml", "yarn.lock", "Cargo.lock", "poetry.lock", "Gemfile.lock", "composer.lock"]
+  }
+];
+
+function escapeRegExp(char) {
+  return /[.*+?^${}()|[\]\\]/.test(char) ? `\\${char}` : char;
+}
+
+// A small glob subset, not micromatch: * within a segment, ** across
+// segments, ? for one non-separator character. A pattern with no slash
+// matches the basename anywhere in the tree; one with a slash matches the
+// full path, so "src/generated/*" doesn't also hide "other/generated/x".
+function globToRegExp(pattern) {
+  let source = "";
+  for (let i = 0; i < pattern.length; i++) {
+    const char = pattern[i];
+    if (char === "*" && pattern[i + 1] === "*") {
+      source += ".*";
+      i++;
+    } else if (char === "*") {
+      source += "[^/]*";
+    } else if (char === "?") {
+      source += "[^/]";
+    } else {
+      source += escapeRegExp(char);
+    }
+  }
+  return new RegExp(`^${source}$`);
+}
+
+function matchGlob(pattern, path) {
+  const regex = globToRegExp(pattern);
+  if (pattern.includes("/")) return regex.test(path);
+  const base = path.slice(path.lastIndexOf("/") + 1);
+  return regex.test(base);
+}
+
 const state = {
   data: null,
   filesById: new Map(),
@@ -30,6 +75,13 @@ const state = {
   expandedNotes: new Set(),
   collapsedFiles: new Set(),
   expandedHunks: new Set(),
+  // File-hide filters: ephemeral, not persisted. A review session is one-shot,
+  // and a sticky "hide tests" preference would silently hide files in the
+  // *next* review someone opens.
+  activeHidePresets: new Set(),
+  customHidePatterns: [],
+  hidePatternDraft: "",
+  hidePatternError: null,
   focusedLine: null,
   focusedAnchor: null,
   focusedHunk: null,
@@ -229,6 +281,117 @@ function ensureTabbableRow() {
   rows[0].querySelector(".add-comment")?.setAttribute("tabindex", "0");
 }
 
+function activeHidePatterns() {
+  const patterns = [];
+  for (const preset of PRESETS) {
+    if (state.activeHidePresets.has(preset.id)) patterns.push(...preset.patterns);
+  }
+  patterns.push(...state.customHidePatterns);
+  return patterns;
+}
+
+function isFileHidden(file) {
+  const patterns = activeHidePatterns();
+  return patterns.length > 0 && patterns.some(pattern => matchGlob(pattern, file.path));
+}
+
+function hiddenFileStats() {
+  const files = state.data.hunks?.files || [];
+  return { hidden: files.filter(isFileHidden).length, total: files.length };
+}
+
+function togglePreset(id) {
+  if (state.activeHidePresets.has(id)) state.activeHidePresets.delete(id);
+  else state.activeHidePresets.add(id);
+  render();
+}
+
+function commitHidePattern(form) {
+  const pattern = String(new FormData(form).get("pattern") || "").trim();
+  if (!pattern) return;
+  if (state.customHidePatterns.includes(pattern)) {
+    state.hidePatternError = `"${pattern}" is already hidden.`;
+    render();
+    return;
+  }
+  state.customHidePatterns.push(pattern);
+  state.hidePatternDraft = "";
+  state.hidePatternError = null;
+  render();
+}
+
+function removeHidePattern(pattern) {
+  state.customHidePatterns = state.customHidePatterns.filter(existing => existing !== pattern);
+  render();
+}
+
+function clearHideFilters() {
+  state.activeHidePresets.clear();
+  state.customHidePatterns = [];
+  state.hidePatternDraft = "";
+  state.hidePatternError = null;
+  render();
+}
+
+function renderPresetToggle(preset) {
+  const id = `hide-preset-${preset.id}`;
+  const input = $("input", { type: "checkbox", id, dataset: { fk: `filter-preset:${preset.id}` } });
+  input.checked = state.activeHidePresets.has(preset.id);
+  input.addEventListener("change", () => togglePreset(preset.id));
+  return $("label", { class: "filter-preset", for: id }, [input, $("span", { text: preset.label })]);
+}
+
+function renderHidePatternForm() {
+  const form = $("form", {
+    class: "filter-pattern-form",
+    onSubmit: event => { event.preventDefault(); commitHidePattern(form); }
+  });
+  const input = $("input", {
+    type: "text",
+    name: "pattern",
+    placeholder: "Add pattern, e.g. *.generated.ts",
+    "aria-label": "Add a file hide pattern",
+    dataset: { fk: "filter-pattern-input" }
+  });
+  input.value = state.hidePatternDraft;
+  // Draft text only, no render: render() rebuilds the DOM and would drop
+  // focus (and the keystroke) out of this input on every character typed.
+  input.addEventListener("input", () => { state.hidePatternDraft = input.value; });
+  form.append(input, $("button", { type: "submit", text: "Add" }));
+  if (state.hidePatternError) form.append($("div", { class: "filter-error", role: "alert", text: state.hidePatternError }));
+  return form;
+}
+
+function renderHidePatternChip(pattern) {
+  return $("li", { class: "filter-pattern-chip" }, [
+    $("span", { text: pattern }),
+    $("button", {
+      type: "button",
+      text: "×",
+      "aria-label": `Stop hiding ${pattern}`,
+      dataset: { fk: `filter-pattern-remove:${pattern}` },
+      onClick: () => removeHidePattern(pattern)
+    })
+  ]);
+}
+
+function renderFilterPanel() {
+  const { hidden, total } = hiddenFileStats();
+  const anyActive = state.activeHidePresets.size > 0 || state.customHidePatterns.length > 0;
+  return $("div", { class: "filter-panel" }, [
+    $("div", { class: "filter-head" }, [
+      $("span", { class: "filter-title", text: "Hide files" }),
+      hidden > 0 ? $("span", { class: "filter-count", text: `${hidden} of ${total} hidden` }) : null,
+      anyActive ? $("button", { type: "button", text: "Clear", dataset: { fk: "filter-clear" }, onClick: clearHideFilters }) : null
+    ].filter(Boolean)),
+    $("div", { class: "filter-presets" }, PRESETS.map(renderPresetToggle)),
+    renderHidePatternForm(),
+    state.customHidePatterns.length
+      ? $("ul", { class: "filter-patterns" }, state.customHidePatterns.map(renderHidePatternChip))
+      : null
+  ].filter(Boolean));
+}
+
 function renderSidebar() {
   const failure = state.actionError
     || (state.offline ? "server unreachable - your last change was not saved" : null);
@@ -247,6 +410,7 @@ function renderSidebar() {
     // Rendered only when there is something to say: role="alert" announces on
     // insertion, so a permanently mounted banner would announce nothing.
     failure ? $("div", { class: "banner", role: "alert", text: failure }) : null,
+    renderFilterPanel(),
     $("nav", { class: "nav-list", "aria-label": "Chapters" }, state.chapters.map(renderNavItem))
   ]);
 }
@@ -322,9 +486,14 @@ function renderHeader() {
 
 function renderChapter(chapter) {
   const section = $("section", { class: "chapter", id: `chapter-${chapter.id}`, dataset: { chapter: chapter.id } });
+  const allGroups = groupChapterHunks(chapter);
+  const groups = allGroups.filter(group => group.missing || !isFileHidden(group.file));
+  const totalHunks = (chapter.hunks || []).length;
+  const hiddenHunks = allGroups.reduce((sum, group) => sum + (!group.missing && isFileHidden(group.file) ? group.hunks.length : 0), 0);
+  const hunksText = hiddenHunks ? `${totalHunks - hiddenHunks} of ${totalHunks} hunks` : `${totalHunks} hunks`;
   const badges = $("div", { class: "badges" }, [
     chapter.size ? $("span", { class: "badge", text: chapter.size }) : null,
-    $("span", { class: "badge", text: `${(chapter.hunks || []).length} hunks` })
+    $("span", { class: "badge", text: hunksText })
   ].filter(Boolean));
   section.append($("div", { class: "section-head" }, [
     $("div", {}, [$("h2", { text: chapter.title }), badges]),
@@ -355,8 +524,10 @@ function renderChapter(chapter) {
     section.append($("div", { class: "flags" }, chapter.flags.map(flag => $("span", { class: "badge warn", text: flag }))));
   }
   appendAnchorComments(section, { kind: "chapter", chapter: chapter.id });
-  const groups = groupChapterHunks(chapter);
-  if (!groups.length) section.append($("div", { class: "empty", text: "No hunks." }));
+  if (!groups.length) {
+    const text = allGroups.length ? "All files in this chapter are hidden by filters." : "No hunks.";
+    section.append($("div", { class: "empty", text }));
+  }
   for (const group of groups) section.append(renderFileGroup(chapter, group));
   return section;
 }

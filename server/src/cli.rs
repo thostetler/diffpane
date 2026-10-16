@@ -116,6 +116,14 @@ pub struct Built {
   pub meta: Meta,
 }
 
+fn remove_if_present(path: &std::path::Path) -> Result<()> {
+  match std::fs::remove_file(path) {
+    Ok(()) => Ok(()),
+    Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+    Err(error) => Err(error).context(format!("remove {}", path.display())),
+  }
+}
+
 /// Re-running on the same branch the same day reuses the session directory, so
 /// both of the previous run's mutable artefacts have to go. Comments would
 /// replay a stale `submitted: true` and anchor to hunk ids that have moved; a
@@ -124,11 +132,7 @@ pub struct Built {
 /// chapter set nobody asked for.
 fn clear_previous_run(session: &Session) -> Result<()> {
   write_json(&session.state_path(), &ReviewState::default())?;
-  match std::fs::remove_file(session.review_path()) {
-    Ok(()) => Ok(()),
-    Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
-    Err(error) => Err(error).context(format!("remove {}", session.review_path().display())),
-  }
+  remove_if_present(&session.review_path())
 }
 
 /// Builds the session on disk, or `None` when there is nothing to review.

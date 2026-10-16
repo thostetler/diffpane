@@ -1,7 +1,7 @@
 {
   "name": "diffpane",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Review a git diff in your browser, comment on the lines, hand the feedback back to your agent.",
   "license": "MIT",
   "author": "Tim Hostetler",

@@ -23,6 +23,8 @@
   --accent: #7aa2ff;
   --shadow: rgba(0, 0, 0, 0.35);
   --sidebar-w: 236px;
+  --panel-inset: 128px;
+  --pane-w: 720px;
   /* Measured from the real header on every render; this is the boot value. */
   --top-h: 88px;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -492,8 +494,12 @@ h1 {
   overflow-x: auto;
 }
 
-.hunk {
+.diff-inner {
   min-width: max-content;
+}
+
+.hunk {
+  min-width: 100%;
 }
 
 .hunk-header {
@@ -602,16 +608,25 @@ h1 {
 .note-chip[aria-expanded="true"] { background: color-mix(in srgb, var(--chip) 22%, transparent); }
 .note-chip.flag { --chip: var(--warn-text); }
 
+.attached {
+  width: calc(var(--pane-w) - var(--panel-inset) - 12px);
+  min-width: 0;
+}
+
+.diff .attached {
+  position: sticky;
+  left: var(--panel-inset);
+}
+
 .line-note {
   --anchor: var(--faint);
   position: relative;
-  margin: 3px 10px 4px 128px;
+  margin: 3px 0 4px var(--panel-inset);
   border: 1px solid var(--line-soft);
   border-left: 2px solid var(--anchor);
   background: var(--panel-2);
   border-radius: 0 6px 6px 0;
   padding: 5px 8px;
-  min-width: 520px;
   display: flex;
   gap: 8px;
   align-items: baseline;
@@ -653,7 +668,7 @@ h1 {
 }
 
 .fold-row {
-  padding: 6px 10px 6px 128px;
+  padding: 6px 10px 6px var(--panel-inset);
   color: var(--muted);
   background: #10151b;
   border-top: 1px solid var(--line-soft);
@@ -665,13 +680,12 @@ h1 {
 .comment-box, .composer {
   --anchor: var(--accent);
   position: relative;
-  margin: 4px 10px 5px 128px;
+  margin: 4px 0 5px var(--panel-inset);
   border: 1px solid var(--line);
   border-left: 2px solid var(--anchor);
   background: var(--panel);
   border-radius: 0 6px 6px 0;
   padding: 6px 8px;
-  min-width: 520px;
 }
 
 .comment-box::before, .composer::before {
@@ -875,6 +889,7 @@ h1 {
 }
 
 @media (max-width: 860px) {
+  :root { --panel-inset: 10px; }
   .app { grid-template-columns: 1fr; }
   .sidebar {
     position: static;
@@ -891,7 +906,5 @@ h1 {
   .overall { grid-template-columns: 1fr; }
   .composer-row { grid-template-columns: 1fr; }
   .composer-actions { justify-content: flex-end; }
-  .comment-box, .composer, .line-note { margin-left: 10px; min-width: 0; }
-  .fold-row { padding-left: 10px; }
   .diff-row { grid-template-columns: 42px 42px 24px 12px minmax(360px, 1fr) 22px; }
 }

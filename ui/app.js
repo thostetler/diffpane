@@ -252,7 +252,11 @@ function render() {
   const app = document.getElementById("app");
   const restore = focusKeyOf(document.activeElement);
   const sidebar = renderSidebar();
-  const main = $("main", { class: "main" }, [renderHeader(), ...state.chapters.map(renderChapter), renderFooter()]);
+  const main = $("main", { class: "main" }, [
+    renderHeader(),
+    ...state.chapters.map(renderChapter),
+    renderFooter()
+  ]);
   app.replaceChildren(sidebar, main);
   markActiveNav();
   ensureTabbableRow();
@@ -260,17 +264,20 @@ function render() {
     || (state.focusFallback && app.querySelector(state.focusFallback));
   state.focusFallback = null;
   target?.focus({ preventScroll: true });
-  syncTopOffset();
+  syncMetrics();
 }
 
 // File headers stick directly under the page header, and jump targets clear it.
 // The header's height depends on how the story wraps, so measure it.
-function syncTopOffset() {
+function syncMetrics() {
+  const root = document.documentElement.style;
   const top = document.querySelector(".top");
-  if (top) document.documentElement.style.setProperty("--top-h", `${top.offsetHeight}px`);
+  if (top) root.setProperty("--top-h", `${top.offsetHeight}px`);
+  const diff = document.querySelector(".diff");
+  if (diff) root.setProperty("--pane-w", `${diff.clientWidth}px`);
 }
 
-addEventListener("resize", syncTopOffset);
+addEventListener("resize", syncMetrics);
 
 // Exactly one diff row is tabbable at a time; the rest are reached with j/k.
 // Otherwise a 400-line diff is 400 tab stops before the submit footer.
@@ -479,7 +486,7 @@ function renderHeader() {
           dataset: { fk: "fold-all" },
           onClick: () => setAllExpanded(!expanded)
         })
-      ])
+      ].filter(Boolean))
     ])
   ]);
 }
@@ -610,9 +617,9 @@ function renderFileGroup(chapter, group) {
     article.append($("div", { class: "empty", text: "No hunks in this file." }));
     return article;
   }
-  const diff = $("div", { class: "diff" });
-  for (const hunk of hunks) diff.append(renderHunk(chapter, file, hunk));
-  article.append(diff);
+  const inner = $("div", { class: "diff-inner" });
+  for (const hunk of hunks) inner.append(renderHunk(chapter, file, hunk));
+  article.append($("div", { class: "diff" }, inner));
   return article;
 }
 
@@ -682,7 +689,7 @@ function appendLine(parent, chapter, file, hunk, line) {
     $("div", { class: "code", text: line.text ?? "" }),
     // Always present, note or not: the rail is a grid column, and a missing
     // cell would shift the row it is missing from.
-    $("div", { class: "note-rail" }, note ? renderNoteChip(note, noteKey, panelId, label) : [])
+    $("div", { class: "note-rail" }, note ? renderNoteChip(note, noteKey, panelId, label) : null)
   ]);
   parent.append(row);
   if (note && state.expandedNotes.has(noteKey)) parent.append(renderNote(note, panelId));
@@ -710,7 +717,7 @@ function renderNoteChip(note, key, panelId, lineLabel) {
 
 function renderNote(note, panelId) {
   const kind = NOTE_LABEL[note.kind] || "note";
-  return $("div", { class: `line-note ${note.kind === "flag" ? "flag" : "note"}`, id: panelId }, [
+  return $("div", { class: `line-note attached ${note.kind === "flag" ? "flag" : "note"}`, id: panelId }, [
     $("span", { class: "note-kind", text: kind }),
     $("span", { class: "note-body", text: note.body || "" })
   ]);
@@ -728,7 +735,7 @@ function lineAnchor(file, hunk, line, chapter) {
 }
 
 function renderComment(comment) {
-  const box = $("div", { class: `comment-box ${comment.verdict}` });
+  const box = $("div", { class: `comment-box attached ${comment.verdict}` });
   box.append($("div", { class: "comment-meta" }, [
     $("span", {}, [
       $("span", { class: `verdict ${comment.verdict}`, text: VERDICT_GLYPH[comment.verdict] || "" }),
@@ -787,7 +794,7 @@ function segmented({ name, label, value, key, labels = COMMENT_LABELS, onChange 
 function renderComposer(existing = state.composer?.comment) {
   const verdict = existing?.verdict || state.composer?.verdict || "fix";
   const body = existing?.body ?? state.composer?.body ?? "";
-  const form = $("form", { class: "composer", onSubmit: event => { event.preventDefault(); saveComposer(form); } });
+  const form = $("form", { class: "composer attached", onSubmit: event => { event.preventDefault(); saveComposer(form); } });
   const textarea = $("textarea", { name: "body", rows: "2", placeholder: "Add feedback…" });
   textarea.value = body;
   form.append($("div", { class: "composer-row" }, [

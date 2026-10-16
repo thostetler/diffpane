@@ -290,7 +290,7 @@ test('a saved comment is anchored under its line and counted in the sidebar', as
     class: el.nextElementSibling?.className ?? 'nothing',
     text: el.nextElementSibling?.textContent ?? '',
   }));
-  assert.match(under.class, /comment-box question/, `under ${rowId}: ${under.class}`);
+  assert.match(under.class, /comment-box .*question/, `under ${rowId}: ${under.class}`);
   assert.match(under.text, /why this way\?/, 'the anchored comment is not the one just saved');
   assert.match(
     (await page.locator(`.nav-item[data-chapter="${chapter}"]`).getAttribute('aria-label')) ?? '',
@@ -399,6 +399,28 @@ test('draft pattern text survives a re-render triggered elsewhere', async () => 
   await input.fill('*.generated.ts');
   await page.locator('[data-fk="filter-preset:lockfiles"]').check();
   assert.equal(await input.inputValue(), '*.generated.ts');
+});
+
+test('attached panels fit the scrollport and stay in it when the diff scrolls', async () => {
+  const measure = (): Promise<{ wide: string[]; adrift: string[] }> =>
+    page.evaluate(() => {
+      const wide: string[] = [];
+      const adrift: string[] = [];
+      for (const el of Array.from(document.querySelectorAll<HTMLElement>('.diff .attached'))) {
+        const pane = el.closest<HTMLElement>('.diff')!.getBoundingClientRect();
+        const box = el.getBoundingClientRect();
+        if (box.width > pane.width) wide.push(el.className);
+        if (box.left < pane.left - 1 || box.right > pane.right + 1) adrift.push(el.className);
+      }
+      return { wide, adrift };
+    });
+
+  assert.deepEqual(await measure(), { wide: [], adrift: [] });
+
+  await page.evaluate(() => {
+    for (const diff of Array.from(document.querySelectorAll('.diff'))) diff.scrollLeft = 99999;
+  });
+  assert.deepEqual((await measure()).adrift, [], 'a panel scrolled out of its own pane');
 });
 
 test('the file header stays under the page header while its file is on screen', async () => {
